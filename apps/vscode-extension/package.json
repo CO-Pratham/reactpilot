@@ -1,0 +1,42 @@
+{
+  "name": "reactpilot-vscode",
+  "displayName": "ReactPilot",
+  "description": "AI-powered assistant for React projects",
+  "version": "0.1.0",
+  "publisher": "reactpilot",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:reactpilot.analyzeFile"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "reactpilot.analyzeFile",
+        "title": "ReactPilot: Analyze File"
+      },
+      {
+        "command": "reactpilot.fixFile",
+        "title": "ReactPilot: Fix File"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsup src/extension.ts --format cjs --dts --out-dir dist",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/vscode": "^1.90.0",
+    "eslint": "^9.10.0",
+    "tsup": "^8.3.4",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@reactpilot/analyzer": "file:../../packages/analyzer"
+  }
+}
+

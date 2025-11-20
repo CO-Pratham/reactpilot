@@ -1,0 +1,45 @@
+
+
+> reactpilot-vscode@0.1.0 build
+> tsup src/extension.ts --format cjs --dts --out-dir dist
+
+[1G[0K[34mCLI[39m Building entry: src/extension.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Target: es2021
+[34mCJS[39m Build start
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "vscode"[0m
+
+    src/extension.ts:1:24:
+[37m      1 │ import * as vscode from [32m'vscode'[37m;
+        ╵                         [32m~~~~~~~~[0m
+
+  You can mark the path "vscode" as external to exclude it from the bundle, which will remove this
+  error and leave the unresolved path in the bundle.
+
+[31mCJS[39m [31mBuild failed[39m
+[31mError: Build failed with 1 error:
+src/extension.ts:1:24: ERROR: Could not resolve "vscode"
+    at failureErrorWithLog (/Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:1467:15)
+    at /Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:926:25
+    at runOnEndCallbacks (/Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:1307:45)
+    at buildResponseToResult (/Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:924:7)
+    at /Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:951:16
+    at responseCallbacks.<computed> (/Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/Users/prathamgupta/Documents/ReactHistory/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)[39m
+DTS Build start
+error TS5095: Option 'bundler' can only be used when 'module' is set to 'preserve' or to 'es2015' or later.
+src/extension.ts(2,32): error TS6059: File '/Users/prathamgupta/Documents/ReactHistory/packages/analyzer/src/index.ts' is not under 'rootDir' 'src'. 'rootDir' is expected to contain all source files.
+
+DTS Build error
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m Lifecycle script `build` failed with error:
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcode[39m [33m1[39m
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mpath[39m /Users/prathamgupta/Documents/ReactHistory/apps/vscode-extension
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mworkspace[39m reactpilot-vscode@0.1.0
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mlocation[39m /Users/prathamgupta/Documents/ReactHistory/apps/vscode-extension
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m command failed
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcommand[39m sh -c tsup src/extension.ts --format cjs --dts --out-dir dist
+[1G[0K⠙[1G[0K
