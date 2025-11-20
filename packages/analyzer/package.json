@@ -1,0 +1,35 @@
+{
+  "name": "@reactpilot/analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "echo 'Analyzer library is ready'",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.26.3",
+    "@babel/traverse": "^7.26.3",
+    "@types/babel__traverse": "^7.20.6",
+    "recast": "^0.23.10",
+    "typescript": "^5.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "eslint": "^9.10.0",
+    "tsup": "^8.3.4",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  }
+}
+
