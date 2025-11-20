@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { Command } from "commander";
 import { runAnalyze } from "./commands/analyze.js";
 import { runFix } from "./commands/fix.js";

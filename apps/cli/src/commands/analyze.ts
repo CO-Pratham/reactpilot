@@ -13,11 +13,12 @@ export async function runAnalyze(
   options: AnalyzeOptions = {}
 ) {
   let spinner: Ora | undefined;
+  const oraFactory = getOraFactory();
   try {
     const projectPath = resolveProjectPath(targetDir);
     const selectedRules = await resolveRuleSelection(options.rule);
 
-    spinner = ora(
+    spinner = oraFactory(
       `Analyzing project at ${targetDir} with rules: ${selectedRules.join(
         ", "
       )}`
@@ -27,10 +28,26 @@ export async function runAnalyze(
     spinner.succeed("Analysis complete");
     printSummary(report, selectedRules);
   } catch (error) {
+    const isPromptAbort =
+      typeof error === "object" &&
+      error !== null &&
+      "isTtyError" in error &&
+      // enquirer sets either `isTtyError` or `isCancelled`
+      // depending on how the prompt was exited
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      (error.isTtyError || error.isCanceled || error.name === "AbortError");
+
+    if (isPromptAbort) {
+      // user intentionally closed the prompt, nothing to do
+      oraFactory().info("Prompt cancelled, exiting without running rules.");
+      return;
+    }
+
     if (spinner) {
       spinner.fail("Analysis failed");
     } else {
-      ora().fail("Analysis failed");
+      oraFactory().fail("Analysis failed");
     }
     throw error;
   }
@@ -55,16 +72,31 @@ async function resolveRuleSelection(
     throw new Error("Unable to load enquirer Select prompt.");
   }
 
-  const selection = await new Select({
+  const prompt = new Select({
     name: "rule",
     message: "Select analyzer rule to run (choose 'all' to run every rule)",
     choices: [
       { name: "all", message: "All rules" },
       ...available.map((rule) => ({ name: rule, message: rule })),
     ],
-  }).run();
+  });
 
-  return selection === "all" ? available : [selection];
+  return new Promise<string[]>((resolve) => {
+    const finalize = (selection: string | null) => {
+      if (!selection || selection === "all") {
+        resolve(available);
+      } else {
+        resolve([selection]);
+      }
+    };
+
+    prompt.once("cancel", () => finalize(null));
+
+    prompt
+      .run()
+      .then((selection) => finalize(selection))
+      .catch(() => finalize(null));
+  });
 }
 
 function resolveRulesFromOptions(
@@ -84,7 +116,7 @@ function resolveRulesFromOptions(
   const valid = normalized.filter((rule) => available.includes(rule));
   if (valid.length === 0) {
     console.warn(
-      chalk.yellow(
+      getChalkModule().yellow(
         "No matching rules found for the provided filter. Running all rules instead."
       )
     );
@@ -143,18 +175,19 @@ function printSummary(
 ) {
   const { filesScanned, componentsScanned, summary, issues } = report;
 
-  console.log(chalk.bold("\nScan Summary"));
+  const theme = getChalkModule();
+  console.log(theme.bold("\nScan Summary"));
   console.log(
     [
-      `Files: ${chalk.cyan(filesScanned)}`,
-      `Components: ${chalk.cyan(componentsScanned)}`,
-      `Issues: ${chalk.red(summary.errors)} errors, ${chalk.yellow(
+      `Files: ${theme.cyan(filesScanned)}`,
+      `Components: ${theme.cyan(componentsScanned)}`,
+      `Issues: ${theme.red(summary.errors)} errors, ${theme.yellow(
         summary.warnings
-      )} warnings, ${chalk.blue(summary.info)} info`,
+      )} warnings, ${theme.blue(summary.info)} info`,
     ].join(" | ")
   );
 
-  console.log(chalk.bold("\nRules executed:"));
+  console.log(theme.bold("\nRules executed:"));
   selectedRules.forEach((rule) => {
     const matchTypes = RULE_TYPE_MAP[rule] ?? [rule];
     const count = issues.filter((issue) =>
@@ -162,19 +195,19 @@ function printSummary(
     ).length;
     const status =
       count > 0
-        ? chalk.yellow(`${count} issue${count === 1 ? "" : "s"}`)
-        : chalk.green("0 issues");
+        ? theme.yellow(`${count} issue${count === 1 ? "" : "s"}`)
+        : theme.green("0 issues");
     console.log(`- ${rule}: ${status}`);
   });
 
   if (issues.length === 0) {
     console.log(
-      chalk.green("\n✔ No issues detected for the selected rule(s).")
+      theme.green("\n✔ No issues detected for the selected rule(s).")
     );
     return;
   }
 
-  console.log(chalk.bold("\nIssues by file:"));
+  console.log(theme.bold("\nIssues by file:"));
   const issuesByFile = issues.reduce<Record<string, typeof issues>>(
     (acc, issue) => {
       acc[issue.file] = acc[issue.file] || [];
@@ -185,20 +218,33 @@ function printSummary(
   );
 
   Object.entries(issuesByFile).forEach(([file, fileIssues]) => {
-    console.log(chalk.cyan(`\n${file}`));
+    console.log(theme.cyan(`\n${file}`));
     fileIssues.forEach((issue) => {
       const severityColor =
         issue.severity === "error"
-          ? chalk.red
+          ? theme.red
           : issue.severity === "warning"
-          ? chalk.yellow
-          : chalk.blue;
+          ? theme.yellow
+          : theme.blue;
 
       console.log(
-        `  ${chalk.gray(`L${issue.line}`)} ${severityColor(issue.type)} - ${
+        `  ${theme.gray(`L${issue.line}`)} ${severityColor(issue.type)} - ${
           issue.suggestion
         }`
       );
     });
   });
+}
+
+function getOraFactory(): (...args: Parameters<typeof ora>) => Ora {
+  const candidate = (ora as unknown as { default?: typeof ora }).default ?? ora;
+  if (typeof candidate !== "function") {
+    throw new Error("Unable to load ora spinner.");
+  }
+  return candidate as typeof ora;
+}
+
+function getChalkModule(): typeof chalk {
+  return ((chalk as unknown as { default?: typeof chalk }).default ??
+    chalk) as typeof chalk;
 }

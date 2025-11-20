@@ -1,20 +1,23 @@
 {
   "name": "@reactpilot/cli",
-  "version": "0.2.0",
-  "type": "module",
+  "version": "0.2.3",
   "bin": {
-    "reactpilot": "dist/index.js"
+    "reactpilot": "./dist/index.cjs"
   },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.cjs",
   "scripts": {
     "dev": "echo 'CLI is ready. Use: reactpilot [command]'",
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup --config tsup.config.ts",
     "lint": "eslint src --ext .ts",
     "test": "vitest"
   },
   "dependencies": {
     "@reactpilot/ai-engine": "file:../../packages/ai-engine",
     "@reactpilot/analyzer": "file:../../packages/analyzer",
-    "@reactpilot/cli": "^0.1.0",
     "@reactpilot/patcher": "file:../../packages/patcher",
     "@reactpilot/utils": "file:../../packages/utils",
     "chalk": "^5.4.1",

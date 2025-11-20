@@ -25,7 +25,7 @@
     "turbo": "^2.1.1"
   },
   "dependencies": {
-    "@reactpilot/cli": "^0.1.0",
+    "@reactpilot/cli": "^0.2.0",
     "mongodb": "^7.0.0"
   }
 }
