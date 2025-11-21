@@ -3,7 +3,6 @@ import path from 'node:path';
 import ora from 'ora';
 import chalk from 'chalk';
 import { analyzeProject } from '@reactpilot/analyzer';
-import { generateOptimizationSuggestions } from '@reactpilot/ai-engine';
 
 export async function runOptimize(targetDir: string) {
   const spinner = ora(`Optimizing project at ${targetDir}`).start();

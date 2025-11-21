@@ -162,6 +162,13 @@ function printSummary(
   report: {
     filesScanned: number;
     componentsScanned: number;
+    performanceScore: number;
+    stats: {
+      hooksUsed: number;
+      inlineHandlers: number;
+      heavyComponents: number;
+      potentialBugs: number;
+    };
     summary: { errors: number; warnings: number; info: number };
     issues: Array<{
       file: string;
@@ -173,20 +180,11 @@ function printSummary(
   },
   selectedRules: string[]
 ) {
-  const { filesScanned, componentsScanned, summary, issues } = report;
+  const { filesScanned, componentsScanned, summary, issues, performanceScore, stats } = report;
 
   const theme = getChalkModule();
-  console.log(theme.bold("\nScan Summary"));
-  console.log(
-    [
-      `Files: ${theme.cyan(filesScanned)}`,
-      `Components: ${theme.cyan(componentsScanned)}`,
-      `Issues: ${theme.red(summary.errors)} errors, ${theme.yellow(
-        summary.warnings
-      )} warnings, ${theme.blue(summary.info)} info`,
-    ].join(" | ")
-  );
-
+  
+  // 1. Rules Executed
   console.log(theme.bold("\nRules executed:"));
   selectedRules.forEach((rule) => {
     const matchTypes = RULE_TYPE_MAP[rule] ?? [rule];
@@ -200,40 +198,68 @@ function printSummary(
     console.log(`- ${rule}: ${status}`);
   });
 
+  // 2. Issues List
   if (issues.length === 0) {
     console.log(
       theme.green("\n✔ No issues detected for the selected rule(s).")
     );
-    return;
+  } else {
+    console.log(theme.bold("\nIssues by file:"));
+    const issuesByFile = issues.reduce<Record<string, typeof issues>>(
+      (acc, issue) => {
+        acc[issue.file] = acc[issue.file] || [];
+        acc[issue.file].push(issue);
+        return acc;
+      },
+      {}
+    );
+
+    Object.entries(issuesByFile).forEach(([file, fileIssues]) => {
+      console.log(theme.cyan(`\n${file}`));
+      fileIssues.forEach((issue) => {
+        const severityColor =
+          issue.severity === "error"
+            ? theme.red
+            : issue.severity === "warning"
+            ? theme.yellow
+            : theme.blue;
+
+        console.log(
+          `  ${theme.gray(`L${issue.line}`)} ${severityColor(issue.type)} - ${
+            issue.suggestion
+          }`
+        );
+      });
+    });
   }
 
-  console.log(theme.bold("\nIssues by file:"));
-  const issuesByFile = issues.reduce<Record<string, typeof issues>>(
-    (acc, issue) => {
-      acc[issue.file] = acc[issue.file] || [];
-      acc[issue.file].push(issue);
-      return acc;
-    },
-    {}
-  );
+  // 3. Performance Score Display
+  console.log(theme.bold("\n--------------------------------------------------"));
+  let scoreColor = theme.green;
+  if (performanceScore < 50) scoreColor = theme.red;
+  else if (performanceScore < 80) scoreColor = theme.yellow;
+  
+  console.log(theme.bold(`ReactPilot Performance Score: ${scoreColor(performanceScore + "/100")}`));
+  console.log(theme.bold("--------------------------------------------------"));
 
-  Object.entries(issuesByFile).forEach(([file, fileIssues]) => {
-    console.log(theme.cyan(`\n${file}`));
-    fileIssues.forEach((issue) => {
-      const severityColor =
-        issue.severity === "error"
-          ? theme.red
-          : issue.severity === "warning"
-          ? theme.yellow
-          : theme.blue;
+  if (performanceScore < 100) {
+    console.log(theme.bold("Issues impacting score:"));
+    if (stats.inlineHandlers > 0) console.log(theme.red(`- ${stats.inlineHandlers} inline handlers`));
+    if (stats.heavyComponents > 0) console.log(theme.yellow(`- ${stats.heavyComponents} large components`));
+    if (stats.potentialBugs > 0) console.log(theme.red(`- ${stats.potentialBugs} potential bugs`));
+    const otherIssues = issues.length - stats.inlineHandlers - stats.heavyComponents - stats.potentialBugs;
+    if (otherIssues > 0) console.log(theme.blue(`- ${otherIssues} other improvement opportunities`));
+    console.log("");
+  }
 
-      console.log(
-        `  ${theme.gray(`L${issue.line}`)} ${severityColor(issue.type)} - ${
-          issue.suggestion
-        }`
-      );
-    });
-  });
+  // 4. Project Summary
+  console.log(theme.bold("Project Summary:"));
+  console.log(`Files: ${theme.cyan(filesScanned)}`);
+  console.log(`Components: ${theme.cyan(componentsScanned)}`);
+  console.log(`Hooks Used: ${theme.cyan(stats.hooksUsed)}`);
+  console.log(`Inline Handlers: ${theme.yellow(stats.inlineHandlers)}`);
+  console.log(`Heavy Components: ${theme.yellow(stats.heavyComponents)}`);
+  console.log(`Potential Bugs: ${theme.red(stats.potentialBugs)}`);
 }
 
 function getOraFactory(): (...args: Parameters<typeof ora>) => Ora {

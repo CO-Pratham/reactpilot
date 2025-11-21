@@ -1,27 +1,35 @@
 {
   "name": "@reactpilot/cli",
-  "version": "0.2.3",
+  "version": "0.2.6",
+  "type": "module",
   "bin": {
     "reactpilot": "./dist/index.cjs"
   },
-  "type": "module",
-  "files": [
-    "dist"
-  ],
   "main": "dist/index.cjs",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CO-Pratham/reactpilot.git"
+  },
+  "author": "ReactPilot Team",
+  "license": "MIT",
   "scripts": {
-    "dev": "echo 'CLI is ready. Use: reactpilot [command]'",
+    "dev": "tsx src/index.ts",
     "build": "tsup --config tsup.config.ts",
     "lint": "eslint src --ext .ts",
     "test": "vitest"
   },
   "dependencies": {
-    "@reactpilot/ai-engine": "file:../../packages/ai-engine",
-    "@reactpilot/analyzer": "file:../../packages/analyzer",
-    "@reactpilot/patcher": "file:../../packages/patcher",
-    "@reactpilot/utils": "file:../../packages/utils",
     "chalk": "^5.4.1",
     "commander": "^12.1.0",
+    "dotenv": "^17.2.3",
     "enquirer": "^2.4.1",
     "ora": "^8.2.0"
   },
