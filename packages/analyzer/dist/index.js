@@ -284,6 +284,7 @@ function analyzeProject(projectPath, options = {}) {
   const files = collectSourceFiles(projectPath);
   const issues = [];
   let componentsScanned = 0;
+  let hooksUsed = 0;
   const selectedRules = getSelectedRules(options);
   const combinedVisitor = buildCombinedVisitor(selectedRules);
   files.forEach((filePath) => {
@@ -294,6 +295,10 @@ function analyzeProject(projectPath, options = {}) {
       if (hasReactComponent(code)) {
         componentsScanned++;
       }
+      const hookMatches = code.match(/use[A-Z][a-zA-Z0-9]*/g);
+      if (hookMatches) {
+        hooksUsed += hookMatches.length;
+      }
     } catch (error) {
       console.warn(`Failed to analyze ${filePath}:`, error);
     }
@@ -303,10 +308,25 @@ function analyzeProject(projectPath, options = {}) {
     warnings: issues.filter((i) => i.severity === "warning").length,
     info: issues.filter((i) => i.severity === "info").length
   };
+  let score = 100;
+  score -= summary.errors * 5;
+  score -= summary.warnings * 2;
+  score -= summary.info * 0.5;
+  const performanceScore = Math.max(0, Math.min(100, Math.round(score)));
+  const inlineHandlers = issues.filter((i) => i.type.includes("inline-function")).length;
+  const heavyComponents = issues.filter((i) => i.type === "heavy-component").length;
+  const potentialBugs = issues.filter((i) => i.severity === "error" || i.type === "invalid-hook" || i.type === "unused-state").length;
   return {
     issues,
     componentsScanned,
     filesScanned: files.length,
+    performanceScore,
+    stats: {
+      hooksUsed,
+      inlineHandlers,
+      heavyComponents,
+      potentialBugs
+    },
     summary
   };
 }
@@ -334,6 +354,13 @@ function hasReactComponent(code) {
 }
 function collectSourceFiles(projectPath, acc = []) {
   try {
+    const stat = fs.statSync(projectPath);
+    if (stat.isFile()) {
+      if (EXTENSIONS.includes(path.extname(projectPath))) {
+        acc.push(projectPath);
+      }
+      return acc;
+    }
     const entries = fs.readdirSync(projectPath, { withFileTypes: true });
     entries.forEach((entry) => {
       const fullPath = path.join(projectPath, entry.name);
@@ -346,7 +373,7 @@ function collectSourceFiles(projectPath, acc = []) {
       }
     });
   } catch (error) {
-    console.warn(`Cannot read directory ${projectPath}:`, error);
+    console.warn(`Cannot read path ${projectPath}:`, error);
   }
   return acc;
 }

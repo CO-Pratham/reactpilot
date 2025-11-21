@@ -24,7 +24,7 @@ export function createPatchPreview(payload: PatchPayload): string {
   let lineNum = 1;
   
   diff.forEach((part) => {
-    const lines = part.value.split('\n').filter(l => l.length > 0);
+    const lines = part.value.split(/\r?\n/).filter(l => l.length > 0);
     const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
     const color = part.added ? 'green' : part.removed ? 'red' : 'white';
     
@@ -153,8 +153,8 @@ function attemptSmartMerge(payload: PatchPayload): string | null {
   const { originalCode, patchedCode } = payload;
   
   // Simple line-by-line merge strategy
-  const originalLines = originalCode.split('\n');
-  const patchedLines = patchedCode.split('\n');
+  const originalLines = originalCode.split(/\r?\n/);
+  const patchedLines = patchedCode.split(/\r?\n/);
   
   // If the files are drastically different, don't attempt merge
   const lengthDiff = Math.abs(originalLines.length - patchedLines.length);
@@ -214,7 +214,7 @@ export function generateChangeSummary(payload: PatchPayload): {
   let linesModified = 0;
   
   diff.forEach((part, index) => {
-    const lineCount = part.value.split('\n').filter(l => l.length > 0).length;
+    const lineCount = part.value.split(/\r?\n/).filter(l => l.length > 0).length;
     
     if (part.added) {
       linesAdded += lineCount;
@@ -227,7 +227,7 @@ export function generateChangeSummary(payload: PatchPayload): {
     }
   });
   
-  const totalOriginalLines = payload.originalCode.split('\n').length;
+  const totalOriginalLines = payload.originalCode.split(/\r?\n/).length;
   const changePercentage = totalOriginalLines > 0 
     ? ((linesAdded + linesRemoved) / totalOriginalLines) * 100 
     : 0;

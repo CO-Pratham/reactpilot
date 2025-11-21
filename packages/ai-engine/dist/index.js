@@ -1,5 +1,44 @@
 // src/index.ts
 import { z } from "zod";
+
+// src/llm.ts
+import OpenAI from "openai";
+var LLMService = class {
+  constructor(apiKey, baseURL, model) {
+    this.openai = null;
+    this.model = "gpt-4o";
+    const key = apiKey || process.env.REACTPILOT_API_KEY;
+    const url = baseURL || process.env.REACTPILOT_API_BASE_URL;
+    this.model = model || process.env.REACTPILOT_MODEL || "gpt-4o";
+    if (key) {
+      this.openai = new OpenAI({
+        apiKey: key,
+        baseURL: url
+        // Optional, defaults to OpenAI
+      });
+    }
+  }
+  isConfigured() {
+    return !!this.openai;
+  }
+  async getCompletion(prompt) {
+    if (!this.openai) {
+      throw new Error("OpenAI API key not configured. Please set REACTPILOT_API_KEY.");
+    }
+    try {
+      const completion = await this.openai.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: this.model
+      });
+      return completion.choices[0]?.message?.content || "";
+    } catch (error) {
+      console.error("LLM Call Failed:", error);
+      throw error;
+    }
+  }
+};
+
+// src/index.ts
 var aiResponseSchema = z.object({
   explanation: z.string(),
   patchedCode: z.string(),
@@ -10,7 +49,27 @@ var aiResponseSchema = z.object({
   })).optional()
 });
 async function proposeFix(payload) {
-  const prompt = buildPrompt(payload);
+  const llm = new LLMService();
+  if (llm.isConfigured()) {
+    try {
+      const prompt = buildPrompt(payload);
+      const jsonPrompt = `${prompt}
+
+IMPORTANT: Respond ONLY with a valid JSON object matching this schema:
+      {
+        "explanation": "string",
+        "patchedCode": "string",
+        "suggestions": [{ "issue": "string", "fix": "string", "line": number }]
+      }`;
+      const rawResponse = await llm.getCompletion(jsonPrompt);
+      const cleanJson = rawResponse.replace(/```json\n|\n```/g, "").trim();
+      return aiResponseSchema.parse(JSON.parse(cleanJson));
+    } catch (error) {
+      console.warn("LLM generation failed, falling back to mock engine:", error);
+    }
+  } else {
+    console.info("No API key found (REACTPILOT_API_KEY). Using mock AI engine.");
+  }
   const fixes = generateContextualFixes(payload);
   return aiResponseSchema.parse(fixes);
 }
@@ -18,14 +77,20 @@ function generateContextualFixes(payload) {
   const { code, issues = [] } = payload;
   let patchedCode = code;
   const suggestions = [];
-  if (issues.some((i) => i.type === "unused-import")) {
-    const unusedImports = issues.filter((i) => i.type === "unused-import");
-    suggestions.push({
-      issue: "Unused imports detected",
-      fix: `Remove ${unusedImports.length} unused import(s) to clean up the code`,
-      line: unusedImports[0]?.line
-    });
-  }
+  const unusedImports = issues.filter((i) => i.type === "unused-import");
+  suggestions.push({
+    issue: "Unused imports detected",
+    fix: `Remove ${unusedImports.length} unused import(s) to clean up the code`,
+    line: unusedImports[0]?.line
+  });
+  const lines = patchedCode.split("\n");
+  const linesToRemove = unusedImports.map((i) => i.line - 1).sort((a, b) => b - a);
+  linesToRemove.forEach((lineIdx) => {
+    if (lineIdx >= 0 && lineIdx < lines.length) {
+      lines.splice(lineIdx, 1);
+    }
+  });
+  patchedCode = lines.join("\n");
   if (code.includes("onClick={() =>") || code.includes("onChange={() =>")) {
     patchedCode = fixInlineFunctions(code);
     suggestions.push({

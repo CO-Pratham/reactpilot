@@ -10,20 +10,10 @@ import type {
   AnalyzerContext,
   AnalyzeOptions,
   Rule,
+  AnalyzerReport,
 } from "./types";
 
-export type { AnalyzerIssue };
-
-export interface AnalyzerReport {
-  issues: AnalyzerIssue[];
-  componentsScanned: number;
-  filesScanned: number;
-  summary: {
-    errors: number;
-    warnings: number;
-    info: number;
-  };
-}
+export type { AnalyzerIssue, AnalyzerReport };
 
 const EXTENSIONS = [".js", ".jsx", ".ts", ".tsx"];
 const EXCLUDE_DIRS = ["node_modules", "dist", "build", ".git", "coverage"];
@@ -38,6 +28,8 @@ export function analyzeProject(
   const files = collectSourceFiles(projectPath);
   const issues: AnalyzerIssue[] = [];
   let componentsScanned = 0;
+  let hooksUsed = 0;
+  
   const selectedRules = getSelectedRules(options);
   const combinedVisitor = buildCombinedVisitor(selectedRules);
 
@@ -51,6 +43,12 @@ export function analyzeProject(
       if (hasReactComponent(code)) {
         componentsScanned++;
       }
+      
+      // Count hooks usage (naive regex approach for speed)
+      const hookMatches = code.match(/use[A-Z][a-zA-Z0-9]*/g);
+      if (hookMatches) {
+        hooksUsed += hookMatches.length;
+      }
     } catch (error) {
       console.warn(`Failed to analyze ${filePath}:`, error);
     }
@@ -62,10 +60,32 @@ export function analyzeProject(
     info: issues.filter((i) => i.severity === "info").length,
   };
 
+  // Calculate Performance Score
+  // Start at 100, deduct points based on issues
+  let score = 100;
+  score -= summary.errors * 5;
+  score -= summary.warnings * 2;
+  score -= summary.info * 0.5;
+  
+  // Cap score between 0 and 100
+  const performanceScore = Math.max(0, Math.min(100, Math.round(score)));
+
+  // Collect detailed stats
+  const inlineHandlers = issues.filter(i => i.type.includes('inline-function')).length;
+  const heavyComponents = issues.filter(i => i.type === 'heavy-component').length;
+  const potentialBugs = issues.filter(i => i.severity === 'error' || i.type === 'invalid-hook' || i.type === 'unused-state').length;
+
   return {
     issues,
     componentsScanned,
     filesScanned: files.length,
+    performanceScore,
+    stats: {
+      hooksUsed,
+      inlineHandlers,
+      heavyComponents,
+      potentialBugs
+    },
     summary,
   };
 }
@@ -116,6 +136,14 @@ function hasReactComponent(code: string): boolean {
 
 function collectSourceFiles(projectPath: string, acc: string[] = []): string[] {
   try {
+    const stat = fs.statSync(projectPath);
+    if (stat.isFile()) {
+      if (EXTENSIONS.includes(path.extname(projectPath))) {
+        acc.push(projectPath);
+      }
+      return acc;
+    }
+
     const entries = fs.readdirSync(projectPath, { withFileTypes: true });
     entries.forEach((entry) => {
       const fullPath = path.join(projectPath, entry.name);
@@ -128,7 +156,7 @@ function collectSourceFiles(projectPath: string, acc: string[] = []): string[] {
       }
     });
   } catch (error) {
-    console.warn(`Cannot read directory ${projectPath}:`, error);
+    console.warn(`Cannot read path ${projectPath}:`, error);
   }
   return acc;
 }

@@ -22,13 +22,40 @@ export interface AiPromptPayload {
 /**
  * Propose AI-generated fixes for code issues
  */
+import { LLMService } from './llm.js';
+
+/**
+ * Propose AI-generated fixes for code issues
+ */
 export async function proposeFix(payload: AiPromptPayload): Promise<AiResponse> {
-  const prompt = buildPrompt(payload);
+  const llm = new LLMService();
   
-  // TODO: Integrate with OpenAI/Anthropic/Local LLM
-  // For now, provide intelligent mock fixes based on detected issues
+  if (llm.isConfigured()) {
+    try {
+      const prompt = buildPrompt(payload);
+      // Force JSON response from LLM for easier parsing
+      const jsonPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with a valid JSON object matching this schema:
+      {
+        "explanation": "string",
+        "patchedCode": "string",
+        "suggestions": [{ "issue": "string", "fix": "string", "line": number }]
+      }`;
+      
+      const rawResponse = await llm.getCompletion(jsonPrompt);
+      
+      // Clean up potential markdown code blocks in response
+      const cleanJson = rawResponse.replace(/```json\n|\n```/g, '').trim();
+      
+      return aiResponseSchema.parse(JSON.parse(cleanJson));
+    } catch (error) {
+      console.warn('LLM generation failed, falling back to mock engine:', error);
+    }
+  } else {
+    console.info('No API key found (REACTPILOT_API_KEY). Using mock AI engine.');
+  }
+
+  // Fallback to mock logic
   const fixes = generateContextualFixes(payload);
-  
   return aiResponseSchema.parse(fixes);
 }
 
@@ -43,15 +70,24 @@ function generateContextualFixes(payload: AiPromptPayload): AiResponse {
   // Apply automatic fixes for common issues
   
   // 1. Fix unused imports
-  if (issues.some(i => i.type === 'unused-import')) {
     const unusedImports = issues.filter(i => i.type === 'unused-import');
     suggestions.push({
       issue: 'Unused imports detected',
       fix: `Remove ${unusedImports.length} unused import(s) to clean up the code`,
       line: unusedImports[0]?.line
     });
-    // In a real implementation, we'd parse and remove the actual imports
-  }
+    
+    // Simple line-based removal for mock engine
+    const lines = patchedCode.split('\n');
+    // Sort lines descending to avoid index shifting issues
+    const linesToRemove = unusedImports.map(i => i.line - 1).sort((a, b) => b - a);
+    
+    linesToRemove.forEach(lineIdx => {
+      if (lineIdx >= 0 && lineIdx < lines.length) {
+        lines.splice(lineIdx, 1);
+      }
+    });
+    patchedCode = lines.join('\n');
 
   // 2. Fix inline functions in JSX (re-render risks)
   if (code.includes('onClick={() =>') || code.includes('onChange={() =>')) {

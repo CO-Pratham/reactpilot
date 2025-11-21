@@ -5,7 +5,7 @@ function createPatchPreview(payload) {
   let preview = "";
   let lineNum = 1;
   diff.forEach((part) => {
-    const lines = part.value.split("\n").filter((l) => l.length > 0);
+    const lines = part.value.split(/\r?\n/).filter((l) => l.length > 0);
     const prefix = part.added ? "+ " : part.removed ? "- " : "  ";
     const color = part.added ? "green" : part.removed ? "red" : "white";
     lines.forEach((line) => {
@@ -95,8 +95,8 @@ function detectConflicts(original, patched) {
 }
 function attemptSmartMerge(payload) {
   const { originalCode, patchedCode } = payload;
-  const originalLines = originalCode.split("\n");
-  const patchedLines = patchedCode.split("\n");
+  const originalLines = originalCode.split(/\r?\n/);
+  const patchedLines = patchedCode.split(/\r?\n/);
   const lengthDiff = Math.abs(originalLines.length - patchedLines.length);
   if (lengthDiff > originalLines.length * 0.5) {
     return null;
@@ -129,7 +129,7 @@ function generateChangeSummary(payload) {
   let linesRemoved = 0;
   let linesModified = 0;
   diff.forEach((part, index) => {
-    const lineCount = part.value.split("\n").filter((l) => l.length > 0).length;
+    const lineCount = part.value.split(/\r?\n/).filter((l) => l.length > 0).length;
     if (part.added) {
       linesAdded += lineCount;
       if (index > 0 && diff[index - 1].removed) {
@@ -139,7 +139,7 @@ function generateChangeSummary(payload) {
       linesRemoved += lineCount;
     }
   });
-  const totalOriginalLines = payload.originalCode.split("\n").length;
+  const totalOriginalLines = payload.originalCode.split(/\r?\n/).length;
   const changePercentage = totalOriginalLines > 0 ? (linesAdded + linesRemoved) / totalOriginalLines * 100 : 0;
   return {
     linesAdded,

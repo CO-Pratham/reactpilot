@@ -1,5 +1,22 @@
-import type { NodePath } from "@babel/traverse";
 import type * as t from "@babel/types";
+
+export interface AnalyzerReport {
+  issues: AnalyzerIssue[];
+  componentsScanned: number;
+  filesScanned: number;
+  performanceScore: number;
+  stats: {
+    hooksUsed: number;
+    inlineHandlers: number;
+    heavyComponents: number;
+    potentialBugs: number;
+  };
+  summary: {
+    errors: number;
+    warnings: number;
+    info: number;
+  };
+}
 
 export interface AnalyzerIssue {
   file: string;

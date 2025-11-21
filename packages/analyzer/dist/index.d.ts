@@ -1,3 +1,20 @@
+interface AnalyzerReport {
+    issues: AnalyzerIssue[];
+    componentsScanned: number;
+    filesScanned: number;
+    performanceScore: number;
+    stats: {
+        hooksUsed: number;
+        inlineHandlers: number;
+        heavyComponents: number;
+        potentialBugs: number;
+    };
+    summary: {
+        errors: number;
+        warnings: number;
+        info: number;
+    };
+}
 interface AnalyzerIssue {
     file: string;
     type: string;
@@ -11,16 +28,6 @@ interface AnalyzeOptions {
     rules?: string[];
 }
 
-interface AnalyzerReport {
-    issues: AnalyzerIssue[];
-    componentsScanned: number;
-    filesScanned: number;
-    summary: {
-        errors: number;
-        warnings: number;
-        info: number;
-    };
-}
 /**
  * Main analyzer function - scans project and detects React issues
  */

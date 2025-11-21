@@ -29,12 +29,12 @@ export const UserDashboardComponentWithVeryLongNameThatShouldBeRefactored = () =
       <h1>User Dashboard</h1>
       
       {/* Re-render risk: inline arrow function */}
-      <button onClick={() => setCount(count + 1)}>
+      <button onClick={handleClick} // TODO: Add useCallback>
         Click: {count}
       </button>
 
       {/* Re-render risk: inline style object */}
-      <div style={{ padding: '20px', margin: '10px' }}>
+      <div style={styles} // TODO: Define styles outside or use useMemo>
         Content
       </div>
 

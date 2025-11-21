@@ -2,12 +2,11 @@
   "name": "reactpilot",
   "version": "0.1.0",
   "private": true,
-  "description": "ReactPilot – AI-powered React developer assistant (monorepo)",
+  "description": "ReactPilot – AI-powered React developer assistant",
   "type": "module",
   "workspaces": [
     "apps/*",
-    "packages/*",
-    "server"
+    "packages/*"
   ],
   "scripts": {
     "dev": "turbo dev",
@@ -25,7 +24,6 @@
     "turbo": "^2.1.1"
   },
   "dependencies": {
-    "@reactpilot/cli": "^0.2.0",
-    "mongodb": "^7.0.0"
+    "@reactpilot/cli": "^0.2.0"
   }
 }

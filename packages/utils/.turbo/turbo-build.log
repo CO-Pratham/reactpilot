@@ -9,8 +9,8 @@
 [34mCLI[39m Target: es2021
 [34mESM[39m Build start
 [32mESM[39m [1mdist/index.js [22m[32m292.00 B[39m
-[32mESM[39m ⚡️ Build success in 46ms
+[32mESM[39m ⚡️ Build success in 35ms
 DTS Build start
-DTS ⚡️ Build success in 666ms
+DTS ⚡️ Build success in 629ms
 DTS dist/index.d.ts 526.00 B
 [1G[0K⠙[1G[0K

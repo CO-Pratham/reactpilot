@@ -1,7 +1,15 @@
 {
   "name": "@reactpilot/ai-engine",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CO-Pratham/reactpilot.git.git"
+  },
+  "author": "ReactPilot Team",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,9 +25,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "zod": "^3.23.8",
     "@reactpilot/utils": "file:../utils",
-    "openai": "^4.76.1"
+    "openai": "^4.104.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
@@ -29,4 +37,3 @@
     "vitest": "^2.1.8"
   }
 }
-
