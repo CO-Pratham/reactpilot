@@ -56,7 +56,7 @@ jobs:
         run: npm ci
 
       - name: Build CLI Package
-        run: npm run build --workspace=@reactpilot/cli
+        run: npx turbo build --filter=@reactpilot/cli
 
       - name: Check if version already published
         id: version_check
