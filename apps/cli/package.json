@@ -22,7 +22,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup --config tsup.config.ts",
+    "build": "tsup --config tsup.config.ts && node scripts/build-dashboard.mjs",
     "lint": "eslint src --ext .ts",
     "test": "vitest"
   },
