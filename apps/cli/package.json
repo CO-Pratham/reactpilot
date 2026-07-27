@@ -1,6 +1,6 @@
 {
   "name": "@reactpilot/cli",
-  "version": "0.2.6",
+  "version": "1.0.0",
   "type": "module",
   "bin": {
     "reactpilot": "./dist/index.cjs"
@@ -27,6 +27,16 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@reactpilot/analyzer": "file:../../packages/analyzer",
+    "@reactpilot/ai-engine": "file:../../packages/ai-engine",
+    "@reactpilot/patcher": "file:../../packages/patcher",
+    "@reactpilot/utils": "file:../../packages/utils",
+    "@reactpilot/config": "file:../../packages/config",
+    "@reactpilot/plugin-system": "file:../../packages/plugin-system",
+    "@reactpilot/github-review": "file:../../packages/github-review",
+    "@reactpilot/project-chat": "file:../../packages/project-chat",
+    "@reactpilot/graph-engine": "file:../../packages/graph-engine",
+    "@reactpilot/migration-engine": "file:../../packages/migration-engine",
     "chalk": "^5.4.1",
     "commander": "^12.1.0",
     "dotenv": "^17.2.3",

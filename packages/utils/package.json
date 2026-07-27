@@ -1,9 +1,7 @@
 {
   "name": "@reactpilot/utils",
   "version": "0.1.0",
-  "publishConfig": {
-    "access": "public"
-  },
+  "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/CO-Pratham/reactpilot.git"
@@ -13,12 +11,25 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./ui": {
+      "import": "./dist/ui/index.js",
+      "types": "./dist/ui/index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts src/ui/index.ts --format esm --dts",
     "lint": "eslint src --ext .ts",
     "test": "vitest"
   },
   "dependencies": {
+    "chalk": "^5.4.1",
+    "enquirer": "^2.4.1",
+    "ora": "^8.2.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -29,4 +40,3 @@
     "vitest": "^2.1.8"
   }
 }
-

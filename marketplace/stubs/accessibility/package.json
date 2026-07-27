@@ -1,0 +1,8 @@
+{
+  "name": "@reactpilot-plugin/accessibility",
+  "version": "1.2.0",
+  "description": "Extends AST checks to find missing aria tags, keyboard accessibility controls, and color contrast issues.",
+  "main": "index.js",
+  "reactpilotVersion": ">=1.0.0",
+  "keywords": ["a11y", "accessibility", "aria"]
+}

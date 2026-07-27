@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import dotenv from "dotenv";
+import packageJson from "../package.json" with { type: "json" };
 import { runAnalyze } from "./commands/analyze.js";
 import { runFix } from "./commands/fix.js";
 
@@ -14,7 +15,7 @@ const program = new Command();
 program
   .name("reactpilot")
   .description("AI-powered React assistant CLI")
-  .version("0.1.0");
+  .version(packageJson.version);
 
 program
   .command("analyze [target]")
@@ -62,4 +63,51 @@ program
     import("./commands/auto-fix.js").then(m => m.runAutoFix(target, options));
   });
 
+// === NEW COMMANDS (ReactPilot v1.0) ===
+import { runPlugin }  from './commands/plugin.js';
+import { runReview }  from './commands/review.js';
+import { runAsk }     from './commands/ask.js';
+import { runGraph }   from './commands/graph.js';
+import { runMigrate } from './commands/migrate.js';
+
+program
+  .command('plugin <action> [name]')
+  .description('Manage ReactPilot plugins (search|install|remove|list|update|info)')
+  .option('--local <path>', 'Install from local directory')
+  .action((action, name, opts) => runPlugin(action, name, opts));
+
+program
+  .command('review [target]')
+  .description('Review a GitHub PR or local diff')
+  .option('--github-action', 'Running inside GitHub Actions')
+  .option('--output <path>', 'Write report to file')
+  .action((target = '.', opts) => runReview(target, opts));
+
+program
+  .command('ask [question]')
+  .description('Chat with your React project using AI')
+  .option('--index', 'Force re-index the project')
+  .option('--no-stream', 'Disable streaming output')
+  .action((question, opts) => runAsk(question, opts));
+
+program
+  .command('graph [target]')
+  .description('Generate an interactive architecture graph')
+  .option('--output <path>', 'Output file path (default: ./reactpilot-graph.html)')
+  .option('--format <fmt>', 'html | svg | png | json (default: html)')
+  .option('--open', 'Open in browser after generation')
+  .option('--theme <t>', 'dark | light (default: dark)')
+  .option('--filter <f>', 'component,hook,context,route,unused,circular')
+  .action((target = '.', opts) => runGraph(target, opts));
+
+program
+  .command('migrate <mode> [target]')
+  .description('Migrate project (react19 | nextjs | rollback | status)')
+  .option('--dry-run', 'Preview changes without writing files')
+  .option('--no-backup', 'Skip creating a backup')
+  .option('--report <path>', 'Write markdown report to file')
+  .action((mode, target = '.', opts) => runMigrate(mode, target, opts));
+// === END NEW COMMANDS ===
+
 program.parse(process.argv);
+

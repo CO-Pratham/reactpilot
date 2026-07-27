@@ -1,0 +1,39 @@
+{
+  "productName": "ReactPilot",
+  "releases": [
+    {
+      "version": "1.2.0",
+      "date": "2026-07-27",
+      "npmVersion": "0.2.6",
+      "changes": [
+        "Embedded interactive architecture graph in the Developer Center",
+        "Plugin marketplace with install, remove, and update from local catalog",
+        "Dashboard sync for review scores, run history, and project insights",
+        "AI chat uses auto-detected project context without asking for repo access",
+        "Fixed plugin listing for symlinked local plugin installs"
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-07-15",
+      "npmVersion": "0.2.4",
+      "changes": [
+        "GitHub PR review with 6-category quality scoring",
+        "Run history persistence under ~/.reactpilot/history",
+        "Migration status for React 19 and Next.js 15",
+        "Settings page for OpenAI, Groq, and Ollama providers"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-01",
+      "npmVersion": "0.2.0",
+      "changes": [
+        "Initial ReactPilot Developer Center dashboard",
+        "CLI commands: analyze, review, ask, graph, plugin, migrate",
+        "Local vector index and semantic project chat",
+        "Interactive dependency graph HTML export"
+      ]
+    }
+  ]
+}
