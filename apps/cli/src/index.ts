@@ -69,6 +69,7 @@ import { runReview }  from './commands/review.js';
 import { runAsk }     from './commands/ask.js';
 import { runGraph }   from './commands/graph.js';
 import { runMigrate } from './commands/migrate.js';
+import { runDashboard } from './commands/dashboard.js';
 
 program
   .command('plugin <action> [name]')
@@ -107,6 +108,13 @@ program
   .option('--no-backup', 'Skip creating a backup')
   .option('--report <path>', 'Write markdown report to file')
   .action((mode, target = '.', opts) => runMigrate(mode, target, opts));
+
+program
+  .command('dashboard')
+  .alias('web')
+  .description('Launch the local Developer Center dashboard')
+  .option('-p, --port <number>', 'Port to run the dashboard server on', '3000')
+  .action((opts) => runDashboard(opts));
 // === END NEW COMMANDS ===
 
 program.parse(process.argv);

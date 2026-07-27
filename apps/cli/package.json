@@ -1,6 +1,6 @@
 {
   "name": "@reactpilot/cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "bin": {
     "reactpilot": "./dist/index.cjs"
@@ -22,7 +22,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup --config tsup.config.ts",
+    "build": "tsup --config tsup.config.ts && node scripts/build-dashboard.mjs",
     "lint": "eslint src --ext .ts",
     "test": "vitest"
   },
