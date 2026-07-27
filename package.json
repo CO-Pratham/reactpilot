@@ -27,6 +27,6 @@
     "typescript-eslint": "^8.65.0"
   },
   "dependencies": {
-    "@reactpilot/cli": "^0.2.0"
+    "@reactpilot/cli": "^1.1.0"
   }
 }
