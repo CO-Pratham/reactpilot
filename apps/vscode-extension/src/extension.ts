@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { analyzeProject } from '../../../packages/analyzer/src/index.js';
+import { analyzeProject } from '@reactpilot/analyzer';
 
 export function activate(context: vscode.ExtensionContext) {
   const analyzeCommand = vscode.commands.registerCommand('reactpilot.analyzeFile', async () => {

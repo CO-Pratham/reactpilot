@@ -23,7 +23,7 @@
     ]
   },
   "scripts": {
-    "build": "tsup src/extension.ts --format cjs --dts --out-dir dist",
+    "build": "tsup src/extension.ts --format cjs --dts --out-dir dist --external vscode",
     "lint": "eslint src --ext .ts",
     "test": "vitest"
   },

@@ -1,0 +1,8 @@
+{
+  "name": "@reactpilot-plugin/react-query",
+  "version": "1.0.0",
+  "description": "Analyzes React Query hook usages, query key standardization, and staleTime optimizations.",
+  "main": "index.js",
+  "reactpilotVersion": ">=1.0.0",
+  "keywords": ["react-query", "tanstack", "performance"]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@reactpilot/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@reactpilot/config": "file:../../packages/config",
+    "@reactpilot/github-review": "file:../../packages/github-review",
+    "@reactpilot/graph-engine": "file:../../packages/graph-engine",
+    "@reactpilot/migration-engine": "file:../../packages/migration-engine",
+    "@reactpilot/plugin-system": "file:../../packages/plugin-system",
+    "@reactpilot/project-chat": "file:../../packages/project-chat",
+    "lucide-react": "^0.468.0",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  }
+}
