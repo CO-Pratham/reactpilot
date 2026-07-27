@@ -62,7 +62,7 @@ jobs:
         run: npx turbo lint --filter=@reactpilot/cli
 
       - name: Run Tests
-        run: npx turbo test --filter=@reactpilot/cli
+        run: npx turbo test --filter=@reactpilot/cli -- --run --passWithNoTests
 
       - name: Check if version already published
         id: version_check
