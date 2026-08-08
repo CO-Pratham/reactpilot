@@ -3,8 +3,13 @@ import path from 'node:path';
 import ora from 'ora';
 import { proposeFix } from '@reactpilot/ai-engine';
 import { applyPatchToCode } from '@reactpilot/patcher';
+import { isFeatureEnabled } from '@reactpilot/config';
 
 export async function runFix(targetFile: string) {
+  if (!isFeatureEnabled('ai-fix')) {
+    console.error('The "ai-fix" feature is not enabled.\nRun: reactpilot features -> select "AI Fix Engine" to enable it.');
+    process.exit(1);
+  }
   const filePath = path.resolve(process.cwd(), targetFile);
   const spinner = ora(`Generating AI fix for ${targetFile}`).start();
   try {

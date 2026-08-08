@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { createRequire } from 'node:module';
 import semver from 'semver';
 import { PluginManifestSchema } from './types.js';
@@ -30,11 +31,10 @@ export async function loadPlugin(
     config?: Record<string, unknown>;
   } = {}
 ): Promise<RegisteredPlugin> {
-  const {
-    projectRoot = process.cwd(),
-    pluginsDir = path.join(process.env.HOME ?? '~', '.reactpilot', 'plugins'),
-    config = {},
-  } = options;
+  const projectRoot = options.projectRoot ?? process.cwd();
+  const pluginsDir = options.pluginsDir ?? path.join(os.homedir(), '.reactpilot', 'plugins');
+  const config = options.config ?? {};
+
 
   const pluginDir = resolvePluginDir(nameOrPath, getPluginSearchPaths(pluginsDir));
   const manifest = loadManifest(pluginDir);
@@ -115,8 +115,8 @@ export async function loadConfiguredPlugins(
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function resolvePluginDir(nameOrPath: string, searchPaths: string[]): string {
-  // Absolute or relative path
-  if (nameOrPath.startsWith('/') || nameOrPath.startsWith('.')) {
+  // Absolute path (C:\plugins\myplugin on Windows, /plugins/myplugin on Unix) or relative path
+  if (path.isAbsolute(nameOrPath) || nameOrPath.startsWith('.')) {
     const resolved = path.resolve(nameOrPath);
     if (fs.existsSync(resolved)) return resolved;
     throw new Error(`Plugin path not found: ${resolved}`);

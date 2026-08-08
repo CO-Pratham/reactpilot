@@ -89,7 +89,10 @@ function collectFiles(dir: string, acc: string[] = []): string[] {
 function detectNodeType(relativePath: string, code: string): GraphNodeType {
   const normalized = relativePath.replace(/\\/g, '/');
 
-  if (normalized.includes('/pages/') || normalized.includes('app/') && (normalized.endsWith('page.tsx') || normalized.endsWith('page.jsx'))) {
+  if (
+    (normalized.includes('/pages/') || normalized.includes('app/')) &&
+    (normalized.endsWith('page.tsx') || normalized.endsWith('page.jsx'))
+  ) {
     return 'page';
   }
   if (normalized.includes('/hooks/') || path.basename(normalized).startsWith('use')) {
@@ -130,10 +133,21 @@ function extractImports(filePath: string, code: string): string[] {
 }
 
 function resolveImport(sourceFile: string, importPath: string, projectRoot: string): string | null {
-  if (!importPath.startsWith('.')) return null; // Ignore node_modules / absolute paths for graph dependencies
+  let candidateBase: string;
 
-  const dirname = path.dirname(sourceFile);
-  const candidateBase = path.resolve(dirname, importPath);
+  if (importPath.startsWith('.')) {
+    const dirname = path.dirname(sourceFile);
+    candidateBase = path.resolve(dirname, importPath);
+  } else if (importPath.startsWith('@/') || importPath.startsWith('~/')) {
+    const aliasRelative = importPath.slice(2);
+    // Check src/ relative candidate first, then root relative
+    const srcCandidate = path.resolve(projectRoot, 'src', aliasRelative);
+    candidateBase = fs.existsSync(srcCandidate) || fs.existsSync(srcCandidate + '.tsx') || fs.existsSync(srcCandidate + '.ts')
+      ? srcCandidate
+      : path.resolve(projectRoot, aliasRelative);
+  } else {
+    return null; // Ignore external npm packages
+  }
 
   // Try exact file, then with extensions, then as index file in directory
   const candidates = [

@@ -99,9 +99,11 @@ export default function ChatHistoryPage() {
           )
         );
       } else {
-        throw new Error('Chat response failed.');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}: Chat response failed.`);
       }
-    } catch (err) {
+    } catch (err: any) {
+      const errMsg = err?.message || 'Connection error. Please ensure your API settings are set up correctly.';
       setSessions((prev) =>
         prev.map((s) =>
           s.id === selectedSessionId
@@ -109,7 +111,7 @@ export default function ChatHistoryPage() {
                 ...s,
                 messages: [
                   ...s.messages,
-                  { role: 'assistant', content: 'Connection error. Please ensure your API settings are set up correctly.' },
+                  { role: 'assistant', content: `⚠️ ${errMsg}` },
                 ],
               }
             : s

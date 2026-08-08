@@ -2,12 +2,13 @@ import OpenAI from 'openai';
 
 export class LLMService {
   private openai: OpenAI | null = null;
-  private model: string = 'gpt-4o';
+  private model: string = 'gpt-4o-mini';
 
   constructor(apiKey?: string, baseURL?: string, model?: string) {
     const key = apiKey || process.env.REACTPILOT_API_KEY;
     const url = baseURL || process.env.REACTPILOT_API_BASE_URL;
-    this.model = model || process.env.REACTPILOT_MODEL || 'gpt-4o';
+    // Default to gpt-4o-mini (~60x cheaper than gpt-4o). Users can override via REACTPILOT_MODEL.
+    this.model = model || process.env.REACTPILOT_MODEL || 'gpt-4o-mini';
 
     if (key) {
       this.openai = new OpenAI({ 

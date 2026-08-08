@@ -7,7 +7,7 @@ import {
   rollbackLatestBackup,
 } from '@reactpilot/migration-engine';
 import { saveRun } from '@reactpilot/github-review';
-import { loadConfig } from '@reactpilot/config';
+import { loadConfig, isFeatureEnabled } from '@reactpilot/config';
 import {
   withSpinner,
   printSection,
@@ -28,9 +28,13 @@ interface MigrateOptions {
  */
 export async function runMigrate(
   mode: string,
-  targetDir: string,
+  targetDir: string = '.',
   options: MigrateOptions = {}
 ): Promise<void> {
+  if (!isFeatureEnabled('migration')) {
+    console.error(colors.error('The "migration" feature is not enabled.\nRun: reactpilot features -> select "Migration Engine" to enable it.'));
+    process.exit(1);
+  }
   printSection('ReactPilot Migration Assistant');
 
   const cwd = path.resolve(targetDir);

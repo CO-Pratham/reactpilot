@@ -14,6 +14,7 @@ export {
   printWarning,
   printInfo,
   printSection,
+  printBoxCallout,
 } from './progress.js';
 export { confirm, select, multiSelect, input } from './prompt.js';
 export type {

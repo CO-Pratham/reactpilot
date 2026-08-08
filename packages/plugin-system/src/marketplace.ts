@@ -1,10 +1,8 @@
-import { execSync, exec } from 'node:child_process';
-import { promisify } from 'node:util';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { MarketplaceEntry } from './types.js';
 
-const execAsync = promisify(exec);
 
 const MARKETPLACE_URL =
   process.env.REACTPILOT_MARKETPLACE_URL ??
@@ -148,14 +146,14 @@ export async function installPlugin(
     ? name
     : `@reactpilot-plugin/${name}`;
 
-  const cmd = `npm install --prefix "${pluginsDir}" "${source}" --save`;
-
-  if (options.verbose) console.log(`Running: ${cmd}`);
+  const args = ['install', '--prefix', pluginsDir, source, '--save'];
+  if (options.verbose) console.log(`Running: npm ${args.join(' ')}`);
 
   try {
-    const { stdout, stderr } = await execAsync(cmd);
-    if (options.verbose && stdout) console.log(stdout);
-    if (stderr && !stderr.includes('warn')) console.warn(stderr);
+    execFileSync('npm', args, {
+      stdio: options.verbose ? 'inherit' : ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32',
+    });
   } catch (err) {
     if (localPath) throw err;
     throw new Error(
@@ -169,8 +167,10 @@ export async function installPlugin(
  */
 export async function removePlugin(name: string, pluginsDir: string): Promise<void> {
   const packageName = name.startsWith('@') ? name : `@reactpilot-plugin/${name}`;
-  const cmd = `npm uninstall --prefix "${pluginsDir}" "${packageName}"`;
-  await execAsync(cmd);
+  execFileSync('npm', ['uninstall', '--prefix', pluginsDir, packageName], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: process.platform === 'win32',
+  });
 }
 
 /**
@@ -183,8 +183,13 @@ export async function updatePlugin(
   const packageName = name
     ? name.startsWith('@') ? name : `@reactpilot-plugin/${name}`
     : '';
-  const cmd = `npm update --prefix "${pluginsDir}" ${packageName}`.trim();
-  await execAsync(cmd);
+  const args = ['update', '--prefix', pluginsDir];
+  if (packageName) args.push(packageName);
+
+  execFileSync('npm', args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: process.platform === 'win32',
+  });
 }
 
 /**

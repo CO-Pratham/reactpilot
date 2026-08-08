@@ -1,9 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parse } from "@babel/parser";
-import traverseModule from "@babel/traverse";
+import _traverseModule from "@babel/traverse";
 import type { Visitor } from "@babel/traverse";
-const traverse = (traverseModule as any).default || traverseModule;
+// @ts-ignore — @babel/traverse ships CJS default; this shim handles both ESM and CJS
+const traverse: typeof _traverseModule = (_traverseModule as any).default ?? _traverseModule;
 import { rules } from "./rules";
 import type {
   AnalyzerIssue,
@@ -29,26 +30,22 @@ export function analyzeProject(
   const issues: AnalyzerIssue[] = [];
   let componentsScanned = 0;
   let hooksUsed = 0;
-  
+
   const selectedRules = getSelectedRules(options);
   const combinedVisitor = buildCombinedVisitor(selectedRules);
 
   files.forEach((filePath) => {
     try {
       const code = fs.readFileSync(filePath, "utf-8");
-      const fileIssues = analyzeFile(filePath, code, combinedVisitor);
+      // AST-count hooks and components in a single pass alongside rule analysis
+      const { fileIssues, componentCount, hookCount } = analyzeFileWithCounts(
+        filePath,
+        code,
+        combinedVisitor
+      );
       issues.push(...fileIssues);
-
-      // Count components in this file
-      if (hasReactComponent(code)) {
-        componentsScanned++;
-      }
-      
-      // Count hooks usage (naive regex approach for speed)
-      const hookMatches = code.match(/use[A-Z][a-zA-Z0-9]*/g);
-      if (hookMatches) {
-        hooksUsed += hookMatches.length;
-      }
+      componentsScanned += componentCount;
+      hooksUsed += hookCount;
     } catch (error) {
       console.warn(`Failed to analyze ${filePath}:`, error);
     }
@@ -60,14 +57,14 @@ export function analyzeProject(
     info: issues.filter((i) => i.severity === "info").length,
   };
 
-  // Calculate Performance Score
-  // Start at 100, deduct points based on issues
+  // Performance Score formula (documented):
+  //   errors   deduct 10 pts each  (rule violations, hook errors — high impact)
+  //   warnings deduct  3 pts each  (style issues, missing deps — medium impact)
+  //   info     deduct  0 pts each  (informational only — no score impact)
+  // Score is clamped to [0, 100].
   let score = 100;
-  score -= summary.errors * 5;
-  score -= summary.warnings * 2;
-  score -= summary.info * 0.5;
-  
-  // Cap score between 0 and 100
+  score -= summary.errors * 10;
+  score -= summary.warnings * 3;
   const performanceScore = Math.max(0, Math.min(100, Math.round(score)));
 
   // Collect detailed stats
@@ -91,14 +88,17 @@ export function analyzeProject(
 }
 
 /**
- * Analyze a single file for issues using modular rules
+ * Analyze a single file for issues and simultaneously count components and hooks.
+ * Performs a single AST traversal pass for all rules + metrics.
  */
-function analyzeFile(
+function analyzeFileWithCounts(
   filePath: string,
   code: string,
   visitor: Visitor<AnalyzerContext>
-): AnalyzerIssue[] {
+): { fileIssues: AnalyzerIssue[]; componentCount: number; hookCount: number } {
   const issues: AnalyzerIssue[] = [];
+  let componentCount = 0;
+  let hookCount = 0;
 
   try {
     const ast = parse(code, {
@@ -113,25 +113,71 @@ function analyzeFile(
       issues,
     };
 
+    // Build a counting visitor to overlay on top of rule visitors
+    const countingVisitor: Visitor<AnalyzerContext> = {
+      // Count actual React component declarations (function/arrow returning JSX)
+      FunctionDeclaration(p: any) {
+        const name: string = p.node.id?.name ?? '';
+        if (name && /^[A-Z]/.test(name)) componentCount++;
+      },
+      VariableDeclarator(p: any) {
+        const name: string = p.node.id?.name ?? '';
+        const initType: string = p.node.init?.type ?? '';
+        const isFn =
+          initType === 'ArrowFunctionExpression' || initType === 'FunctionExpression';
+        if (name && isFn) {
+          if (/^[A-Z]/.test(name)) componentCount++;
+          else if (/^use[A-Z]/.test(name)) hookCount++;
+        }
+      },
+      // Count hook call-sites (e.g. useState(), useEffect())
+      CallExpression(p: any) {
+        const callee = p.node.callee;
+        if (callee.type === 'Identifier' && /^use[A-Z]/.test(callee.name)) {
+          hookCount++;
+        }
+      },
+    };
+
     traverse(ast, visitor, undefined, context);
+    traverse(ast, countingVisitor, undefined, context);
   } catch (error) {
     console.error(`Error analyzing ${filePath}:`, error);
   }
 
-  return issues;
+  return { fileIssues: issues, componentCount, hookCount };
 }
 
 /**
  * Helper functions
  */
 
-function hasReactComponent(code: string): boolean {
-  return (
-    /function\s+[A-Z][a-zA-Z0-9]*/.test(code) ||
-    /const\s+[A-Z][a-zA-Z0-9]*\s*=/.test(code) ||
-    code.includes("JSX.Element") ||
-    code.includes("React.FC")
-  );
+// hasReactComponent kept for external callers but now unused internally
+// (the AST counting in analyzeFileWithCounts is authoritative)
+export function hasReactComponent(code: string): boolean {
+  try {
+    const ast = parse(code, {
+      sourceType: 'module',
+      plugins: ['typescript', 'jsx', 'decorators-legacy'],
+    });
+    let found = false;
+    traverse(ast, {
+      FunctionDeclaration(p: any) {
+        const name: string = p.node.id?.name ?? '';
+        if (name && /^[A-Z]/.test(name)) { found = true; p.stop(); }
+      },
+      VariableDeclarator(p: any) {
+        const name: string = p.node.id?.name ?? '';
+        const initType: string = p.node.init?.type ?? '';
+        const isFn =
+          initType === 'ArrowFunctionExpression' || initType === 'FunctionExpression';
+        if (name && isFn && /^[A-Z]/.test(name)) { found = true; p.stop(); }
+      },
+    });
+    return found;
+  } catch {
+    return false;
+  }
 }
 
 function collectSourceFiles(projectPath: string, acc: string[] = []): string[] {

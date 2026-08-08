@@ -73,6 +73,16 @@ export class ChatMemoryManager {
       ...message,
       timestamp: new Date().toISOString(),
     });
+
+    // Truncate messages to max 50 per session to prevent disk bloat
+    if (session.messages.length > 50) {
+      session.messages = session.messages.slice(-50);
+    }
+    // Truncate total sessions to max 20
+    if (this.sessions.length > 20) {
+      this.sessions = this.sessions.slice(0, 20);
+    }
+
     this.save();
   }
 

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { ProWaitlistModal } from './components/ProWaitlistModal';
+
 import {
   Key,
   Terminal,
@@ -18,6 +20,11 @@ import {
   Share2,
   Layers,
   ArrowUpCircle,
+  Sparkles,
+  Zap,
+  Bot,
+  ShieldCheck,
+  ArrowRight,
 } from 'lucide-react';
 
 interface ReviewIssue {
@@ -137,6 +144,7 @@ export default function DashboardHome() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
@@ -157,6 +165,9 @@ export default function DashboardHome() {
 
   useEffect(() => {
     loadDashboard();
+    if (typeof window !== 'undefined' && window.location.search.includes('waitlist=open')) {
+      setIsWaitlistOpen(true);
+    }
   }, []);
 
   const handleCopy = async (cmd: string) => {
@@ -196,6 +207,59 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-8">
+      {/* Pro Waitlist Banner Card — Premium Design */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-950/90 via-purple-900/80 to-slate-950 border border-indigo-500/40 rounded-2xl p-8 shadow-2xl shadow-indigo-950/60 backdrop-blur-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 group">
+        {/* Background Radial Glow */}
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-purple-500/30 transition-all duration-500" />
+        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative space-y-3 max-w-3xl">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-400/30 rounded-full text-xs font-bold text-indigo-300 shadow-inner">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              ReactPilot Pro Early Access
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-semibold text-emerald-400">
+              14-Day Free Trial
+            </span>
+          </div>
+
+          <h3 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-purple-200 tracking-tight">
+            Want Managed AI Without Setting Up API Keys?
+          </h3>
+
+          <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+            Unlock zero-setup managed AI, one-click code fixes, unlimited codebase RAG chat, and automated GitHub PR reviews for your team without managing API keys or local LLMs.
+          </p>
+
+          <div className="flex items-center gap-5 pt-1 flex-wrap text-xs font-medium text-slate-400">
+            <span className="flex items-center gap-2 text-slate-300">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <strong className="text-white">Zero API Config</strong>
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-2 text-slate-300">
+              <Bot className="w-4 h-4 text-indigo-400" />
+              <strong className="text-white">Automated PR Bot</strong>
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-2 text-slate-300">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <strong className="text-white">Enterprise Security</strong>
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsWaitlistOpen(true)}
+          className="relative shrink-0 px-8 py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-bold text-base rounded-xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.03] transition-all flex items-center gap-2 group cursor-pointer"
+        >
+          Join Pro Waitlist <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+        </button>
+      </div>
+
+      <ProWaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
+
       <div className="bg-gradient-to-r from-violet-600 to-indigo-700 rounded-2xl p-8 shadow-xl text-white">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>

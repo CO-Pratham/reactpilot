@@ -4,9 +4,9 @@ import packageJson from "../package.json" with { type: "json" };
 import { runAnalyze } from "./commands/analyze.js";
 import { runFix } from "./commands/fix.js";
 
-// Load environment variables from root .env if present
-dotenv.config({ path: "../../.env" });
-dotenv.config(); // Also try default location
+// Load environment variables silently
+dotenv.config({ path: "../../.env", quiet: true });
+dotenv.config({ quiet: true });
 import { runOptimize } from "./commands/optimize.js";
 import { runGenerate } from "./commands/generate.js";
 import { runRefactor } from "./commands/refactor.js";
@@ -70,6 +70,16 @@ import { runAsk }     from './commands/ask.js';
 import { runGraph }   from './commands/graph.js';
 import { runMigrate } from './commands/migrate.js';
 import { runDashboard } from './commands/dashboard.js';
+import { runFeatures } from './commands/features.js';
+import { readFeatureStore } from '@reactpilot/config';
+
+program
+  .command('features')
+  .description('Configure or install ReactPilot features on demand')
+  .option('--reset', 'Force re-run interactive feature selector')
+  .option('--all', 'Enable all features non-interactively (CI mode)')
+  .option('--none', 'Disable optional features non-interactively (CI mode)')
+  .action((opts) => runFeatures(opts));
 
 program
   .command('plugin <action> [name]')
@@ -117,5 +127,40 @@ program
   .action((opts) => runDashboard(opts));
 // === END NEW COMMANDS ===
 
-program.parse(process.argv);
+import { printBoxCallout, colors } from '@reactpilot/utils/ui';
+
+async function main() {
+  const firstArg = process.argv[2];
+  const isHelpOrVersion = !firstArg || firstArg === '--help' || firstArg === '-h' || firstArg === '--version' || firstArg === '-v';
+  const isFeatureCmd = firstArg === 'features' || firstArg === 'feature' || firstArg === 'fetures' || firstArg === 'fetrues';
+
+  if (isHelpOrVersion) {
+    printBoxCallout(
+      `⚡ REACTPILOT CLI v${packageJson.version} — AI-Powered React Assistant`,
+      [
+        `${colors.bold('👉 First Command:')}  reactpilot features`,
+        `${colors.bold('✨ Pro Plan:')}       reactpilot dashboard → Click "Join Pro Waitlist"`,
+        `${colors.bold('📚 Documentation:')}  https://co-pratham.github.io/reactpilot-docs/`
+      ]
+    );
+  }
+
+  // First-run auto-prompt if unconfigured and in interactive terminal
+  if (!readFeatureStore() && !isHelpOrVersion && !isFeatureCmd && process.stdin.isTTY) {
+    printBoxCallout(
+      `👋 WELCOME TO REACTPILOT CLI v${packageJson.version}`,
+      [
+        'Let\'s set up your features first!',
+        `${colors.bold('✨ Pro Plan:')}   reactpilot dashboard → "Join Pro Waitlist"`
+      ]
+    );
+    await runFeatures();
+    console.log('');
+  }
+
+  program.parse(process.argv);
+}
+
+main();
+
 

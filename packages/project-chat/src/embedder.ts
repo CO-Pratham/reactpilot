@@ -1,5 +1,19 @@
 import { OpenAI } from 'openai';
 
+/**
+ * Thrown when no embedding provider is available.
+ * Callers should surface this as a user-facing error, not swallow it.
+ */
+export class EmbeddingUnavailableError extends Error {
+  constructor(reason: string) {
+    super(
+      `Embedding provider unavailable: ${reason}. ` +
+      'Run Ollama locally (https://ollama.com) or set REACTPILOT_API_KEY to enable chat.'
+    );
+    this.name = 'EmbeddingUnavailableError';
+  }
+}
+
 export class EmbedderService {
   private openai: OpenAI | null = null;
   private provider: 'openai' | 'ollama' | 'mock' = 'openai';
@@ -50,7 +64,11 @@ export class EmbedderService {
    */
   async embed(text: string): Promise<number[]> {
     if (this.provider === 'mock') {
-      return Array.from({ length: 1536 }, () => Math.random() - 0.5);
+      // Groq does not support embeddings — require user to switch to a provider that does
+      throw new EmbeddingUnavailableError(
+        'Groq does not support text embeddings. ' +
+        'Use REACTPILOT_API_BASE_URL pointing to OpenAI, or start Ollama locally.'
+      );
     }
 
     if (this.provider === 'openai' && this.openai) {
@@ -62,7 +80,7 @@ export class EmbedderService {
         return response.data[0].embedding;
       } catch (err) {
         if (!this.hasLoggedOpenAIError) {
-          console.warn('Primary embedding provider failed, falling back to Ollama. (Subsequent failures will be silenced)');
+          console.warn('OpenAI embedding failed, falling back to Ollama:', err instanceof Error ? err.message : err);
           this.hasLoggedOpenAIError = true;
         }
       }
@@ -92,12 +110,13 @@ export class EmbedderService {
       const data = await res.json() as { embedding: number[] };
       return data.embedding;
     } catch (err) {
-      // If Ollama is not running, return mock/dummy embedding vector so execution doesn't crash
-      if (!this.hasLoggedOllamaError) {
-        console.warn('Ollama embedding connection failed. Using mock vector. (Subsequent failures will be silenced)');
-        this.hasLoggedOllamaError = true;
-      }
-      return Array.from({ length: 1536 }, () => Math.random() - 0.5);
+      // Throw a clear, actionable error instead of silently returning random vectors.
+      // Random vectors produce garbage retrieval results that are impossible to debug.
+      throw new EmbeddingUnavailableError(
+        `Ollama is not reachable at ${this.ollamaBaseUrl}: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
     }
   }
 }

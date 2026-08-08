@@ -42,10 +42,7 @@ export async function proposeFix(payload: AiPromptPayload): Promise<AiResponse> 
       }`;
       
       const rawResponse = await llm.getCompletion(jsonPrompt);
-      
-      // Clean up potential markdown code blocks in response
-      const cleanJson = rawResponse.replace(/```json\n|\n```/g, '').trim();
-      
+      const cleanJson = extractJsonFromLLMResponse(rawResponse);
       return aiResponseSchema.parse(JSON.parse(cleanJson));
     } catch (error) {
       console.warn('LLM generation failed, falling back to mock engine:', error);
@@ -62,75 +59,80 @@ export async function proposeFix(payload: AiPromptPayload): Promise<AiResponse> 
 /**
  * Generate contextual fixes based on code analysis
  */
+/**
+ * Robustly extract a JSON string from an LLM response that may contain
+ * markdown fences (```json ... ```, ``` ... ```), leading/trailing prose, etc.
+ */
+function extractJsonFromLLMResponse(raw: string): string {
+  // 1. Try to find a JSON block inside any markdown fence (```json or ```)
+  const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (fenceMatch?.[1]?.trim()) return fenceMatch[1].trim();
+  // 2. Try to find the outermost JSON object
+  const objMatch = raw.match(/\{[\s\S]*\}/);
+  if (objMatch?.[0]) return objMatch[0].trim();
+  // 3. Return trimmed raw as a last resort
+  return raw.trim();
+}
+
+/**
+ * Generate contextual fixes based on code analysis (mock engine).
+ * IMPORTANT: patchedCode is never modified here — only suggestions are added.
+ * Real code transformations require a live LLM with proper context.
+ */
 function generateContextualFixes(payload: AiPromptPayload): AiResponse {
   const { code, issues = [] } = payload;
-  let patchedCode = code;
   const suggestions: Array<{ issue: string; fix: string; line?: number }> = [];
 
-  // Apply automatic fixes for common issues
-  
-  // 1. Fix unused imports
-    const unusedImports = issues.filter(i => i.type === 'unused-import');
+  // 1. Report unused imports (suggestion only — do NOT splice lines from patchedCode)
+  const unusedImports = issues.filter(i => i.type === 'unused-import');
+  if (unusedImports.length > 0) {
     suggestions.push({
       issue: 'Unused imports detected',
       fix: `Remove ${unusedImports.length} unused import(s) to clean up the code`,
-      line: unusedImports[0]?.line
-    });
-    
-    // Simple line-based removal for mock engine
-    const lines = patchedCode.split('\n');
-    // Sort lines descending to avoid index shifting issues
-    const linesToRemove = unusedImports.map(i => i.line - 1).sort((a, b) => b - a);
-    
-    linesToRemove.forEach(lineIdx => {
-      if (lineIdx >= 0 && lineIdx < lines.length) {
-        lines.splice(lineIdx, 1);
-      }
-    });
-    patchedCode = lines.join('\n');
-
-  // 2. Fix inline functions in JSX (re-render risks)
-  if (code.includes('onClick={() =>') || code.includes('onChange={() =>')) {
-    patchedCode = fixInlineFunctions(code);
-    suggestions.push({
-      issue: 'Inline functions in JSX props',
-      fix: 'Extract inline functions and wrap with useCallback to prevent unnecessary re-renders'
+      line: unusedImports[0]?.line,
     });
   }
 
-  // 3. Fix missing useEffect dependencies
+  // 2. Inline functions in JSX (suggestion only — real extraction requires AST rewrite)
+  if (code.includes('onClick={() =>') || code.includes('onChange={() =>')) {
+    suggestions.push({
+      issue: 'Inline functions in JSX props',
+      fix: 'Extract inline functions and wrap with useCallback to prevent unnecessary re-renders',
+    });
+  }
+
+  // 3. Missing useEffect dependency array
   if (code.includes('useEffect') && !code.includes('useEffect(() =>')) {
     suggestions.push({
       issue: 'Missing useEffect dependency array',
-      fix: 'Add dependency array to useEffect to control when it runs'
+      fix: 'Add dependency array to useEffect to control when it runs',
     });
   }
 
-  // 4. Fix invalid hook usage
+  // 4. Invalid hook usage
   if (issues.some(i => i.type === 'invalid-hook')) {
     suggestions.push({
       issue: 'Hooks called conditionally or in loops',
       fix: 'Move hook calls to the top level of the component',
-      line: issues.find(i => i.type === 'invalid-hook')?.line
+      line: issues.find(i => i.type === 'invalid-hook')?.line,
     });
   }
 
-  // 5. Suggest breaking down heavy components
+  // 5. Heavy components
   if (issues.some(i => i.type === 'heavy-component')) {
     const heavyIssue = issues.find(i => i.type === 'heavy-component');
     suggestions.push({
       issue: 'Component is too large',
       fix: 'Consider extracting logical sections into smaller, reusable components',
-      line: heavyIssue?.line
+      line: heavyIssue?.line,
     });
   }
 
-  // 6. Fix inline objects/arrays in JSX
+  // 6. Inline objects/arrays in JSX (suggestion only — extraction requires AST rewrite)
   if (code.includes('style={{') || code.match(/\w+={[\[\{]/)) {
-    patchedCode = fixInlineObjects(patchedCode);
     suggestions.push({
       issue: 'Inline objects/arrays in JSX props',
-      fix: 'Move object/array definitions outside component or wrap with useMemo'
+      fix: 'Move object/array definitions outside component or wrap with useMemo',
     });
   }
 
@@ -138,61 +140,15 @@ function generateContextualFixes(payload: AiPromptPayload): AiResponse {
 
   return {
     explanation,
-    patchedCode,
-    suggestions
+    patchedCode: code, // mock engine never mutates code — only real LLM does
+    suggestions,
   };
 }
 
-/**
- * Fix inline functions by extracting them
- */
-function fixInlineFunctions(code: string): string {
-  let fixed = code;
-  
-  // Example: Convert onClick={() => doSomething()} to onClick={handleClick}
-  // This is a simplified example; real implementation would use AST transformation
-  
-  const inlineFunctionPattern = /onClick=\{(\(\) => [^}]+)\}/g;
-  const matches = code.match(inlineFunctionPattern);
-  
-  if (matches) {
-    // In a real implementation, we'd:
-    // 1. Extract the function body
-    // 2. Create a useCallback hook
-    // 3. Replace the inline function with the callback reference
-    
-    fixed = code.replace(
-      inlineFunctionPattern,
-      'onClick={handleClick} // TODO: Add useCallback'
-    );
-  }
-  
-  return fixed;
-}
-
-/**
- * Fix inline objects by extracting them
- */
-function fixInlineObjects(code: string): string {
-  let fixed = code;
-  
-  // Example: Extract style objects
-  const stylePattern = /style=\{\{([^}]+)\}\}/g;
-  
-  if (stylePattern.test(code)) {
-    // In a real implementation, we'd:
-    // 1. Extract the style object
-    // 2. Define it outside the component or use useMemo
-    // 3. Replace the inline object with the reference
-    
-    fixed = code.replace(
-      stylePattern,
-      'style={styles} // TODO: Define styles outside or use useMemo'
-    );
-  }
-  
-  return fixed;
-}
+// fixInlineFunctions and fixInlineObjects removed.
+// They produced syntactically broken JSX (replacing multi-line handlers with a comment,
+// and referencing an undefined `styles` variable). Real fixes require AST-based
+// transformation backed by a live LLM — see proposeFix() with a configured API key.
 
 /**
  * Build explanation text from suggestions
@@ -254,20 +210,33 @@ function buildPrompt({ filePath, code, instructions, issues = [] }: AiPromptPayl
 }
 
 /**
- * Batch analyze multiple files
+ * Batch analyze multiple files with bounded concurrency (max 5 parallel requests)
+ * to avoid sequential slowness while respecting LLM rate limits.
  */
 export async function batchAnalyze(files: Array<{ path: string; code: string }>): Promise<Map<string, AiResponse>> {
   const results = new Map<string, AiResponse>();
-  
-  for (const file of files) {
-    const result = await proposeFix({
-      filePath: file.path,
-      code: file.code,
-      instructions: 'Analyze and fix all issues'
+  const BATCH_SIZE = 5;
+
+  for (let i = 0; i < files.length; i += BATCH_SIZE) {
+    const batch = files.slice(i, i + BATCH_SIZE);
+    const settled = await Promise.allSettled(
+      batch.map(f =>
+        proposeFix({
+          filePath: f.path,
+          code: f.code,
+          instructions: 'Analyze and fix all issues',
+        })
+      )
+    );
+    settled.forEach((r, idx) => {
+      if (r.status === 'fulfilled') {
+        results.set(batch[idx].path, r.value);
+      } else {
+        console.warn(`batchAnalyze: failed for ${batch[idx].path}:`, r.reason);
+      }
     });
-    results.set(file.path, result);
   }
-  
+
   return results;
 }
 

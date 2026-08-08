@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import semver from 'semver';
 
 export interface ProjectVersions {
   react: string;
@@ -10,6 +11,7 @@ export interface ProjectVersions {
 
 /**
  * Scan package.json to identify current framework versions.
+ * Handles semver ranges (^19.0.0, >=18.2.0, 19.0.0-rc.1, etc.) reliably using semver library.
  */
 export function detectProjectVersions(projectRoot: string): ProjectVersions {
   const rootsToScan = [projectRoot];
@@ -19,8 +21,8 @@ export function detectProjectVersions(projectRoot: string): ProjectVersions {
     rootsToScan.push(path.join(projectRoot, sub));
   }
 
-  let reactVer = '0.0.0';
-  let nextVer: string | undefined;
+  let reactRaw = '0.0.0';
+  let nextRaw: string | undefined;
 
   for (const root of rootsToScan) {
     const pkgPath = path.join(root, 'package.json');
@@ -30,25 +32,40 @@ export function detectProjectVersions(projectRoot: string): ProjectVersions {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
       const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
-      if (reactVer === '0.0.0' && deps.react) {
-        reactVer = cleanVersion(deps.react);
+      if (reactRaw === '0.0.0' && deps.react) {
+        reactRaw = deps.react;
       }
-      if (!nextVer && deps.next) {
-        nextVer = cleanVersion(deps.next);
+      if (!nextRaw && deps.next) {
+        nextRaw = deps.next;
       }
     } catch {
       // try next candidate
     }
   }
 
+  const reactVer = cleanVersion(reactRaw);
+  const nextVer = nextRaw ? cleanVersion(nextRaw) : undefined;
+
   return {
     react: reactVer,
     next: nextVer,
-    isReact19: reactVer.startsWith('19') || reactVer.startsWith('rc') || reactVer.startsWith('beta'),
-    isNext15: nextVer ? nextVer.startsWith('15') || nextVer.startsWith('rc') : false,
+    isReact19: checkIsMajor(reactRaw, 19),
+    isNext15: nextRaw ? checkIsMajor(nextRaw, 15) : false,
   };
 }
 
-function cleanVersion(ver: string): string {
-  return ver.replace(/[\^~>=]/g, '').trim();
+function cleanVersion(rawVer: string): string {
+  const min = semver.minVersion(rawVer);
+  if (min) return min.version;
+  const coerced = semver.coerce(rawVer);
+  return coerced ? coerced.version : rawVer.replace(/[\^~>=]/g, '').trim();
+}
+
+function checkIsMajor(rawVer: string, major: number): boolean {
+  if (rawVer.includes('rc') || rawVer.includes('beta') || rawVer.includes('canary')) {
+    if (rawVer.includes(String(major))) return true;
+  }
+  const parsed = semver.minVersion(rawVer) ?? semver.coerce(rawVer);
+  if (parsed) return parsed.major >= major;
+  return rawVer.startsWith(String(major));
 }

@@ -1,6 +1,6 @@
 {
   "name": "reactpilot",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "description": "ReactPilot – AI-powered React developer assistant",
   "type": "module",
@@ -25,8 +25,6 @@
     "eslint": "^9.39.5",
     "turbo": "^2.1.1",
     "typescript-eslint": "^8.65.0"
-  },
-  "dependencies": {
-    "@reactpilot/cli": "^1.1.0"
   }
 }
+

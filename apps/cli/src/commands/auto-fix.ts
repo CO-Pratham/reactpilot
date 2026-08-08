@@ -5,8 +5,13 @@ import chalk from 'chalk';
 import { analyzeProject } from '@reactpilot/analyzer';
 import { proposeFix } from '@reactpilot/ai-engine';
 import { applyPatchToCode } from '@reactpilot/patcher';
+import { isFeatureEnabled } from '@reactpilot/config';
 
 export async function runAutoFix(target: string, options: { rule?: string[] }) {
+  if (!isFeatureEnabled('ai-fix')) {
+    console.error('The "ai-fix" feature is not enabled.\nRun: reactpilot features -> select "AI Fix Engine" to enable it.');
+    process.exit(1);
+  }
   const targetPath = path.resolve(process.cwd(), target);
   const spinner = ora(`Analyzing ${target}...`).start();
 

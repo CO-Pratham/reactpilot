@@ -12,7 +12,7 @@ import {
   exportToHtml,
 } from '@reactpilot/graph-engine';
 import { saveRun } from '@reactpilot/github-review';
-import { loadConfig } from '@reactpilot/config';
+import { loadConfig, isFeatureEnabled } from '@reactpilot/config';
 import { withSpinner, printSection, printSuccess, colors } from '@reactpilot/utils/ui';
 
 interface GraphOptions {
@@ -26,6 +26,11 @@ interface GraphOptions {
  * CLI command runner for `reactpilot graph [target]`
  */
 export async function runGraph(targetDir: string, options: GraphOptions): Promise<void> {
+  if (!isFeatureEnabled('graph')) {
+    console.error(colors.error('The "graph" feature is not enabled.\nRun: reactpilot features -> select "Dependency Graph" to enable it.'));
+    process.exit(1);
+  }
+
   printSection('ReactPilot Visual Architecture Graph');
 
   const cwd = path.resolve(targetDir);

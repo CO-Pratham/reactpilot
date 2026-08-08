@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { runFullReview, createGitHubClient, getPRContext, postReviewComment, saveReviewResult } from '@reactpilot/github-review';
-import { loadConfig } from '@reactpilot/config';
+import { loadConfig, isFeatureEnabled } from '@reactpilot/config';
 import { withSpinner, printSection, printSuccess, printWarning, printInfo, colors } from '@reactpilot/utils/ui';
 
 const REVIEW_EXCLUDE_PATTERNS = [
@@ -75,6 +75,11 @@ interface ReviewOptions {
  * CLI command runner for `reactpilot review [target]`
  */
 export async function runReview(targetDir: string, options: ReviewOptions): Promise<void> {
+  if (!isFeatureEnabled('github-review')) {
+    console.error(colors.error('The "github-review" feature is not enabled.\nRun: reactpilot features -> select "GitHub / PR Review" to enable it.'));
+    process.exit(1);
+  }
+
   printSection('ReactPilot Code Review');
 
   const cwd = path.resolve(targetDir);

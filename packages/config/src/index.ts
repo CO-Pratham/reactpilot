@@ -21,3 +21,7 @@ export {
 
 export { defaultConfig } from './defaults.js';
 export { loadConfig, findConfigFile } from './loader.js';
+
+export * from './features.js';
+export * from './feature-store.js';
+

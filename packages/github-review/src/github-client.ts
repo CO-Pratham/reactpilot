@@ -79,7 +79,14 @@ export async function postReviewComment(
 
   const existing = comments.find((c) => c.body?.includes(MARKER));
 
-  const fullBody = `${MARKER}\n${body}`;
+  const MAX_LEN = 65000;
+  let fullBody = `${MARKER}\n${body}`;
+
+  if (fullBody.length > MAX_LEN) {
+    fullBody =
+      fullBody.slice(0, MAX_LEN - 150) +
+      '\n\n---\n> ⚠ **Note:** *This report was truncated because it exceeded GitHub\'s 65,000 character comment limit. Run `reactpilot review` locally to see full details.*';
+  }
 
   if (existing) {
     await octokit.rest.issues.updateComment({

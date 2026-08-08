@@ -1,4 +1,5 @@
 import { createPatch, applyPatch as applyDiffPatch, diffLines } from 'diff';
+import { parse } from '@babel/parser';
 
 export interface PatchPayload {
   filePath: string;
@@ -122,80 +123,81 @@ export function safeMerge(payload: PatchPayload): PatchResult {
 }
 
 /**
- * Detect conflicts between original and patched code
+ * Detect semantic conflicts by finding replaced line blocks in the diff.
  */
 function detectConflicts(original: string, patched: string): string[] {
   const conflicts: string[] = [];
   const diff = diffLines(original, patched);
-  
-  let inConflict = false;
-  let conflictContext = '';
-  
+
   diff.forEach((part, index) => {
-    if (part.added && index > 0 && diff[index - 1].removed) {
-      inConflict = true;
-      conflictContext = `Lines modified: ${diff[index - 1].value} -> ${part.value}`;
-    }
-    
-    if (inConflict) {
-      conflicts.push(conflictContext);
-      inConflict = false;
+    // A conflict is a removed block immediately followed by an added block
+    if (part.removed && index + 1 < diff.length && diff[index + 1].added) {
+      const removed = part.value.trim().slice(0, 120);
+      const added = diff[index + 1].value.trim().slice(0, 120);
+      conflicts.push(`Changed: "${removed}" → "${added}"`);
     }
   });
-  
+
   return conflicts;
 }
 
 /**
- * Attempt to intelligently merge changes
+ * Attempt to intelligently merge changes using line diff analysis and AST syntax validation.
+ * Returns merged code string if successful and syntactically valid; otherwise returns null.
  */
 function attemptSmartMerge(payload: PatchPayload): string | null {
-  const { originalCode, patchedCode } = payload;
-  
-  // Simple line-by-line merge strategy
-  const originalLines = originalCode.split(/\r?\n/);
-  const patchedLines = patchedCode.split(/\r?\n/);
-  
-  // If the files are drastically different, don't attempt merge
-  const lengthDiff = Math.abs(originalLines.length - patchedLines.length);
-  if (lengthDiff > originalLines.length * 0.5) {
-    return null;
+  const { originalCode, patchedCode, filePath } = payload;
+
+  const diff = diffLines(originalCode, patchedCode);
+  const resultLines: string[] = [];
+
+  for (const part of diff) {
+    if (!part.removed) {
+      resultLines.push(part.value);
+    }
   }
-  
-  // For now, prefer the patched version if structure is similar
-  return patchedCode;
+
+  const mergedCandidate = resultLines.join('');
+  const ext = filePath.split('.').pop() as 'js' | 'jsx' | 'ts' | 'tsx';
+  const fileType = ['js', 'jsx', 'ts', 'tsx'].includes(ext) ? ext : 'tsx';
+
+  const validation = validatePatchedCode(mergedCandidate, fileType);
+  if (validation.valid) {
+    return mergedCandidate;
+  }
+
+  return null;
 }
 
 /**
  * Validate that patched code is syntactically correct
  */
-export function validatePatchedCode(code: string, fileType: 'js' | 'jsx' | 'ts' | 'tsx'): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-  
-  // Basic validation checks
-  const openBraces = (code.match(/\{/g) || []).length;
-  const closeBraces = (code.match(/\}/g) || []).length;
-  
-  if (openBraces !== closeBraces) {
-    errors.push(`Mismatched braces: ${openBraces} opening, ${closeBraces} closing`);
+/**
+ * Validate that patched code is syntactically correct by attempting to parse it.
+ * Uses @babel/parser so it handles JS, JSX, TS, and TSX correctly per file type.
+ */
+export function validatePatchedCode(
+  code: string,
+  fileType: 'js' | 'jsx' | 'ts' | 'tsx'
+): { valid: boolean; errors: string[] } {
+  const isTS = fileType === 'ts' || fileType === 'tsx';
+  const isJSX = fileType === 'jsx' || fileType === 'tsx';
+  try {
+    parse(code, {
+      sourceType: 'module',
+      plugins: [
+        ...(isTS ? (['typescript'] as const) : []),
+        ...(isJSX ? (['jsx'] as const) : []),
+        'decorators-legacy',
+      ],
+    });
+    return { valid: true, errors: [] };
+  } catch (err) {
+    return {
+      valid: false,
+      errors: [err instanceof Error ? err.message : String(err)],
+    };
   }
-  
-  const openParens = (code.match(/\(/g) || []).length;
-  const closeParens = (code.match(/\)/g) || []).length;
-  
-  if (openParens !== closeParens) {
-    errors.push(`Mismatched parentheses: ${openParens} opening, ${closeParens} closing`);
-  }
-  
-  // Check for common syntax errors
-  if (code.includes('import') && !code.match(/import\s+.+\s+from\s+['"][^'"]+['"]/)) {
-    errors.push('Possibly malformed import statement');
-  }
-  
-  return {
-    valid: errors.length === 0,
-    errors
-  };
 }
 
 /**

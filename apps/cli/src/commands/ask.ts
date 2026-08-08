@@ -14,7 +14,7 @@ import {
   type ProjectContext,
 } from '@reactpilot/project-chat';
 import { saveRun } from '@reactpilot/github-review';
-import { loadConfig } from '@reactpilot/config';
+import { loadConfig, isFeatureEnabled } from '@reactpilot/config';
 import {
   withSpinner,
   printSection,
@@ -35,6 +35,11 @@ interface AskOptions {
  * CLI command runner for `reactpilot ask [question]`
  */
 export async function runAsk(question: string | undefined, options: AskOptions = {}): Promise<void> {
+  if (!isFeatureEnabled('project-chat')) {
+    console.error(colors.error('The "project-chat" feature is not enabled.\nRun: reactpilot features -> select "Project Chat (AI RAG)" to enable it.'));
+    process.exit(1);
+  }
+
   printSection('ReactPilot Project AI Chat');
 
   const cwd = resolveProjectRoot(process.cwd());

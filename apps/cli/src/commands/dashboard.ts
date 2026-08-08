@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
+import { parse as parseDotenv } from 'dotenv';
 import { getDashboardSnapshot } from './dashboard/dashboard-data.js';
 import { getReactPilotVersionInfo } from './dashboard/reactpilot-version.js';
 import {
@@ -53,8 +54,17 @@ export async function runDashboard(options: { port?: string } = {}) {
   const preferredPort = parseInt(options.port || '3000', 10);
 
   const server = http.createServer(async (req, res) => {
-    // Add CORS headers for local testing
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS: allow only localhost origins to prevent any website from reading API keys or chat data
+    const origin = req.headers.origin || '';
+    const isLocalOrigin =
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('http://127.0.0.1') ||
+      origin.startsWith('http://[::1]') ||
+      origin === '';
+    if (isLocalOrigin && origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -102,23 +112,11 @@ export async function runDashboard(options: { port?: string } = {}) {
           const envPath = path.join(projectRoot, '.env');
 
           if (req.method === 'GET') {
-            let envContent = '';
+            let variables: Record<string, string> = {};
             if (fs.existsSync(envPath)) {
-              envContent = fs.readFileSync(envPath, 'utf-8');
+              // Use dotenv.parse — handles quoted values, = in values, comments correctly
+              variables = parseDotenv(fs.readFileSync(envPath, 'utf-8'));
             }
-
-            const variables: Record<string, string> = {};
-            envContent.split('\n').forEach((line) => {
-              const trimmed = line.trim();
-              if (!trimmed || trimmed.startsWith('#')) return;
-              const parts = trimmed.split('=');
-              if (parts.length >= 2) {
-                const key = parts[0].trim();
-                const val = parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
-                variables[key] = val;
-              }
-            });
-
             return res.end(JSON.stringify({
               apiKey: variables.REACTPILOT_API_KEY || '',
               apiBaseUrl: variables.REACTPILOT_API_BASE_URL || '',
@@ -132,6 +130,19 @@ export async function runDashboard(options: { port?: string } = {}) {
               body += chunk;
             }
             const { apiKey, apiBaseUrl, model } = JSON.parse(body);
+
+            // Warn if .env is not in .gitignore before writing API key
+            const gitignorePath = path.join(projectRoot, '.gitignore');
+            if (apiKey && fs.existsSync(gitignorePath)) {
+              const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+              if (!gitignoreContent.includes('.env')) {
+                console.warn(
+                  '\u26a0  WARNING: .env is not listed in .gitignore. ' +
+                  'Your API key may be accidentally committed to version control.'
+                );
+              }
+            }
+
             const envLines = [
               `REACTPILOT_API_KEY=${apiKey || ''}`,
               `REACTPILOT_API_BASE_URL=${apiBaseUrl || ''}`,
@@ -203,31 +214,17 @@ export async function runDashboard(options: { port?: string } = {}) {
             const projectContext = getProjectContext(projectRoot);
             const { config } = await loadConfig(projectRoot);
 
-            // Load local env
-            const envPath = path.join(projectRoot, '.env');
+            // Read env values directly from file using dotenv.parse — never mutate process.env
             let apiKey = process.env.REACTPILOT_API_KEY || '';
             let apiBaseUrl = process.env.REACTPILOT_API_BASE_URL || '';
             let model = process.env.REACTPILOT_MODEL || config.chat.model || 'gpt-4o-mini';
 
             if (fs.existsSync(envPath)) {
-              const content = fs.readFileSync(envPath, 'utf-8');
-              content.split('\n').forEach((line) => {
-                const trimmed = line.trim();
-                if (!trimmed || trimmed.startsWith('#')) return;
-                const parts = trimmed.split('=');
-                if (parts.length >= 2) {
-                  const k = parts[0].trim();
-                  const v = parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
-                  if (k === 'REACTPILOT_API_KEY') apiKey = v;
-                  if (k === 'REACTPILOT_API_BASE_URL') apiBaseUrl = v;
-                  if (k === 'REACTPILOT_MODEL') model = v;
-                }
-              });
+              const envVars = parseDotenv(fs.readFileSync(envPath, 'utf-8'));
+              if (envVars.REACTPILOT_API_KEY) apiKey = envVars.REACTPILOT_API_KEY;
+              if (envVars.REACTPILOT_API_BASE_URL) apiBaseUrl = envVars.REACTPILOT_API_BASE_URL;
+              if (envVars.REACTPILOT_MODEL) model = envVars.REACTPILOT_MODEL;
             }
-
-            process.env.REACTPILOT_API_KEY = apiKey;
-            process.env.REACTPILOT_API_BASE_URL = apiBaseUrl;
-            process.env.REACTPILOT_MODEL = model;
 
             const embedder = new EmbedderService({
               provider: config.chat.provider,
@@ -346,11 +343,13 @@ export async function runDashboard(options: { port?: string } = {}) {
 }
 
 function openBrowser(url: string) {
-  const start =
-    process.platform === 'darwin'
-      ? 'open'
-      : process.platform === 'win32'
-      ? 'start'
-      : 'xdg-open';
-  exec(`${start} ${url}`);
+  if (process.platform === 'darwin') {
+    exec(`open "${url}"`);
+  } else if (process.platform === 'win32') {
+    // 'start' alone fails in PowerShell; cmd /c start handles both cmd.exe and PowerShell.
+    // The empty string "" is the window title, required before the URL.
+    exec(`cmd /c start "" "${url}"`);
+  } else {
+    exec(`xdg-open "${url}"`);
+  }
 }

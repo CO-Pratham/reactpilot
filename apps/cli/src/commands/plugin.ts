@@ -10,6 +10,7 @@ import {
   generatePluginDocs,
   loadPlugin,
 } from '@reactpilot/plugin-system';
+import { isFeatureEnabled } from '@reactpilot/config';
 import { saveRun } from '@reactpilot/github-review';
 import {
   withSpinner,
@@ -36,6 +37,10 @@ export async function runPlugin(
   name: string | undefined,
   options: PluginOptions = {}
 ): Promise<void> {
+  if (!isFeatureEnabled('plugin-system')) {
+    console.error(colors.error('The "plugin-system" feature is not enabled.\nRun: reactpilot features -> select "Plugin System" to enable it.'));
+    process.exit(1);
+  }
   switch (action) {
     case 'search':  return runSearch(name ?? '', options);
     case 'install': return runInstall(name, options);

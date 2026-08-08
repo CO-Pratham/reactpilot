@@ -187,14 +187,32 @@ export function indexFile(filePath: string, code: string, hash: string): Indexed
   };
 }
 
-function collectFiles(dir: string, acc: string[] = []): string[] {
+function loadIgnorePatterns(dir: string): string[] {
+  const ignoreFile = path.join(dir, '.reactpilotignore');
+  if (!fs.existsSync(ignoreFile)) return [];
+  try {
+    return fs
+      .readFileSync(ignoreFile, 'utf-8')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'));
+  } catch {
+    return [];
+  }
+}
+
+function collectFiles(dir: string, acc: string[] = [], customIgnore?: string[]): string[] {
+  const ignorePatterns = customIgnore ?? loadIgnorePatterns(dir);
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
+      if (ignorePatterns.some((pattern) => entry.name === pattern || fullPath.includes(pattern))) {
+        continue;
+      }
       if (entry.isDirectory()) {
         if (!EXCLUDE_DIRS.includes(entry.name)) {
-          collectFiles(fullPath, acc);
+          collectFiles(fullPath, acc, ignorePatterns);
         }
       } else if (EXTENSIONS.includes(path.extname(entry.name))) {
         acc.push(fullPath);

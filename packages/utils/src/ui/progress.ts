@@ -72,3 +72,25 @@ export function printSection(title: string): void {
   const line = '─'.repeat(Math.max(0, 50 - title.length - 3));
   console.log('\n' + colors.accent(`── ${title} ${line}`));
 }
+
+/** Print a stylized callout box in terminal */
+export function printBoxCallout(title: string, lines: string[]): void {
+  const cleanTitle = title.replace(/\u001b\[\d+m/g, '');
+  const maxLen = Math.max(cleanTitle.length, ...lines.map((l) => l.replace(/\u001b\[\d+m/g, '').length));
+  const width = Math.max(72, maxLen + 6);
+
+  const top = '┌' + '─'.repeat(width - 2) + '┐';
+  const mid = '├' + '─'.repeat(width - 2) + '┤';
+  const bot = '└' + '─'.repeat(width - 2) + '┘';
+
+  console.log('\n' + colors.accent(top));
+  console.log(colors.accent('│  ') + colors.bold(title).padEnd(width - 3 + (title.length - cleanTitle.length)) + colors.accent('│'));
+  console.log(colors.accent(mid));
+  for (const line of lines) {
+    const cleanLine = line.replace(/\u001b\[\d+m/g, '');
+    const padding = width - 4 - cleanLine.length;
+    console.log(colors.accent('│  ') + line + ' '.repeat(Math.max(0, padding)) + colors.accent('│'));
+  }
+  console.log(colors.accent(bot) + '\n');
+}
+
